@@ -10,6 +10,7 @@ import com.vaadin.flow.router.RouterLayout
 class SerialPortPane : HorizontalLayout(), RouterLayout {
 
 	init {
+//		width = "100%"
 		add(VerticalLayout().apply {
 			add("串口參數")
 			add(TextField("串口名", "COM1、COM2 或 ttyS0 之類"))
@@ -17,6 +18,7 @@ class SerialPortPane : HorizontalLayout(), RouterLayout {
 			add(TextField("數據位", "6-8"))
 			add(TextField("停止位", "1 or 2"))
 			add(TextField("奇偶校驗", "O、E 或 N"))
+//			width = "50%"
 		})
 	}
 

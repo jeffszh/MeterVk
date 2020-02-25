@@ -8,6 +8,7 @@ import com.vaadin.flow.router.RouterLayout
 class MainLayout : VerticalLayout(), RouterLayout {
 
 	init {
+//		width = "100%"
 		add(AddressPane())
 	}
 
