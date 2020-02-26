@@ -7,7 +7,7 @@ import com.vaadin.flow.component.orderedlayout.FlexComponent
 import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.router.Route
 
-@Route(value = "PreciseFlowData", layout = MainLayout::class)
+@Route(value = "precise-flow-data", layout = MainLayout::class)
 class PreciseFlowDataPane : VerticalLayout() {
 
 	init {

@@ -11,8 +11,8 @@ class TopBar : VerticalLayout(), RouterLayout {
 	init {
 		defaultHorizontalComponentAlignment=FlexComponent.Alignment.CENTER
 		val tabMap = mapOf(
-				Tab("流量數據") to "FlowData",
-				Tab("高精度流量數據") to "PreciseFlowData"
+				Tab("流量數據") to "flow-data",
+				Tab("高精度流量數據") to "precise-flow-data"
 		)
 		val menuBar = Tabs()
 		tabMap.forEach {
