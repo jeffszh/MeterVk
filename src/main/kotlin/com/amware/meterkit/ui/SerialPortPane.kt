@@ -1,12 +1,14 @@
 package com.amware.meterkit.ui
 
+import com.amware.meterkit.SERVER_PORT
+import com.amware.meterkit.myRestTemplate
+import com.amware.meterkit.showToast
 import com.vaadin.flow.component.button.Button
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout
 import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.component.textfield.TextField
 import com.vaadin.flow.router.ParentLayout
 import com.vaadin.flow.router.RouterLayout
-import org.springframework.web.client.RestTemplate
 import org.springframework.web.client.getForObject
 
 @ParentLayout(TopBar::class)
@@ -24,12 +26,11 @@ class SerialPortPane : HorizontalLayout(), RouterLayout {
 //			width = "50%"
 
 			add(Button("獲取串口列表") {
-				val restTemplate = RestTemplate()
-				val obj = restTemplate.getForObject<Any>(
-						"http://localhost:7406/serial-port")
+				val obj = myRestTemplate.getForObject<Any>(
+						"http://localhost:$SERVER_PORT/serial-port/list")
 				val objText = obj.toString()
 				showToast(objText)
-				println(obj.javaClass)
+//				println(obj.javaClass)
 			})
 		})
 	}

@@ -1,49 +1,31 @@
 package com.amware.meterkit.service
 
-import gnu.io.CommPortIdentifier
+import com.amware.meterkit.mbus.SerialPortMan
+import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RequestMethod
 import org.springframework.web.bind.annotation.RestController
-import java.util.*
+import java.lang.Exception
 
+/**
+ * # 串口相關服務
+ * 包括：獲取串口列表、打開串口和關閉串口。
+ */
 @RestController
 @RequestMapping("/serial-port")
 class SerialPortService {
 
-	private val commPortIdentifierMap = sortedMapOf<String, CommPortIdentifier>()
-	private val commPortStatusMap = sortedMapOf<String, Boolean>()
-
-	@RequestMapping("", method = [RequestMethod.GET], produces = ["application/json"])
-	fun enumSerialPorts(): Map<String, Boolean> {
-		commPortIdentifierMap.clear()
-		@Suppress("UNCHECKED_CAST")
-		val portIdentifiers: Enumeration<CommPortIdentifier> =
-				CommPortIdentifier.getPortIdentifiers() as Enumeration<CommPortIdentifier>
-		while (portIdentifiers.hasMoreElements()) {
-			val id = portIdentifiers.nextElement()
-			if (id.portType == CommPortIdentifier.PORT_SERIAL) {
-				commPortIdentifierMap[id.name] = id
-			}
+	/**
+	 * # 獲取串口列表
+	 * 此操作也可用來試驗串口驅動是否已安裝好。
+	 * @return 串口列表
+	 */
+	@GetMapping("/list")
+	fun enumSerialPorts(): List<String> {
+		try {
+			return SerialPortMan.findCommPorts()
+		} catch (e: Exception) {
+			throw CustomException(e.message ?: e.toString())
 		}
-
-		commPortStatusMap.clear()
-		commPortIdentifierMap.forEach { (portName, _) ->
-			commPortStatusMap[portName] = false
-		}
-
-		// 保證沒有重複的active
-		val firstActiveKey = commPortStatusMap.asIterable().find {
-			it.value
-		}?.key
-		firstActiveKey?.also { activeKey ->
-			commPortStatusMap.keys.forEach { key ->
-				if (key != activeKey) {
-					commPortStatusMap[key] = false
-				}
-			}
-		}
-
-		return commPortStatusMap
 	}
 
 }
