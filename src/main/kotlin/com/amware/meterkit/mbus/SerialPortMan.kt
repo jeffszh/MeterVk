@@ -13,6 +13,7 @@ object SerialPortMan {
 	private val commPortIdentifierMap = sortedMapOf<String, CommPortIdentifier>()
 
 	fun findCommPorts(): List<String> {
+		println("进入findCommPorts()")
 		commPortIdentifierMap.clear()
 		@Suppress("UNCHECKED_CAST")
 		val portIdentifiers: Enumeration<CommPortIdentifier> =
