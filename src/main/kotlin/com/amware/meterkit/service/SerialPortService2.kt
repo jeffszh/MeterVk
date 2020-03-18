@@ -11,8 +11,8 @@ import java.lang.Exception
  * 包括：獲取串口列表、打開串口和關閉串口。
  */
 @RestController
-@RequestMapping("/serial-port")
-class SerialPortService {
+@RequestMapping("/serial-port2")
+class SerialPortService2 {
 
 	/**
 	 * # 獲取串口列表

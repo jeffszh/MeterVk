@@ -1,0 +1,6 @@
+GET http://localhost:7406/serial-port/COM2
+Accept: */*
+Cache-Control: no-cache
+
+###
+

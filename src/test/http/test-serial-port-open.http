@@ -1,0 +1,16 @@
+POST http://localhost:7406/serial-port/
+Content-Type: application/json;charset=UTF-8
+Accept: application/json
+Cache-Control: no-cache
+
+{
+	"name": "ttyS0",
+	"active": true,
+	"baudRate": 115200,
+	"dataBits": 8,
+	"stopBits": 1,
+	"parity": 2
+}
+
+###
+
