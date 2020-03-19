@@ -1,5 +1,6 @@
-GET http://localhost:7406/serial-port/
-Accept: */*
+GET http://182.61.40.6:7406/serial-port/
+Content-Type: application/json;charset=UTF-8
+Accept: application/json
 Cache-Control: no-cache
 
 ###

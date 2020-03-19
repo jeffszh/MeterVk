@@ -45,6 +45,10 @@ public class SerialPortInfo {
 	 */
 	public int parity;
 
+	/**
+	 * true - 串口打开
+	 * false - 串口关闭
+	 */
 	public boolean active;
 
 }
