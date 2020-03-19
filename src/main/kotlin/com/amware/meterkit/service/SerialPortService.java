@@ -27,9 +27,9 @@ public class SerialPortService {
 	 * @return 系统中存在的所有串口的信息
 	 */
 	@RequestEntry(value = SERVICE_ENTRY, method = RequestMethod.GET)
-	@GetMapping("/")
-	public List<SerialPortInfo> listSerialPorts() {
-		throw new RuntimeException("未实现");
+	@GetMapping
+	public List<SerialPortInfo> listSerialPorts() throws BadRequestException {
+		throw new BadRequestException("未实现");
 	}
 
 	/**
@@ -57,7 +57,7 @@ public class SerialPortService {
 	 * @return 操作后串口的实际状态
 	 */
 	@RequestEntry(value = SERVICE_ENTRY, method = RequestMethod.POST)
-	@PostMapping("/")
+	@PostMapping
 	public SerialPortInfo postSerialPort(
 			@RequestBody SerialPortInfo portInfo) {
 		System.out.println("requesting portName is " + portInfo.name);
