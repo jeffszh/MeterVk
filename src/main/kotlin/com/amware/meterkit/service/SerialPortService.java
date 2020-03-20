@@ -1,7 +1,7 @@
 package com.amware.meterkit.service;
 
-import com.alibaba.fastjson.JSON;
 import com.amware.meterkit.entity.SerialPortInfo;
+import com.amware.meterkit.mbus.SerialPortMan;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -28,8 +28,9 @@ public class SerialPortService {
 	 */
 	@RequestEntry(value = SERVICE_ENTRY, method = RequestMethod.GET)
 	@GetMapping
-	public List<SerialPortInfo> listSerialPorts() throws BadRequestException {
-		throw new BadRequestException("未实现");
+	public List<SerialPortInfo> listSerialPorts() {
+		SerialPortMan.INSTANCE.findCommPorts();
+		return SerialPortMan.INSTANCE.listSerialPortsInfo();
 	}
 
 	/**
@@ -45,7 +46,7 @@ public class SerialPortService {
 	@GetMapping("/{id}")
 	public SerialPortInfo getSerialPort(
 			@PathVariable("id") String portName) {
-		throw new RuntimeException("串口" + portName + "不存在。");
+		return SerialPortMan.INSTANCE.querySerialPortInfo(portName);
 	}
 
 	/**
@@ -60,10 +61,16 @@ public class SerialPortService {
 	@PostMapping
 	public SerialPortInfo postSerialPort(
 			@RequestBody SerialPortInfo portInfo) {
-		System.out.println("requesting portName is " + portInfo.name);
-		System.out.println(portInfo);
-		System.out.println(JSON.toJSONString(portInfo));
-		return portInfo;
+		SerialPortMan.INSTANCE.closeSerialPort();
+		if (portInfo.active) {
+			SerialPortMan.INSTANCE.openSerialPort(
+					portInfo.name,
+					portInfo.baudRate,
+					portInfo.dataBits,
+					portInfo.stopBits,
+					portInfo.parity);
+		}
+		return getSerialPort(portInfo.name);
 	}
 
 }

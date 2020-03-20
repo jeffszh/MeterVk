@@ -1,16 +1,21 @@
 package com.amware.meterkit.mbus
 
+import com.amware.meterkit.entity.SerialPortInfo
+import com.amware.meterkit.service.BadRequestException
 import gnu.io.CommPortIdentifier
 import gnu.io.PortInUseException
 import gnu.io.SerialPort
-import gnu.io.UnsupportedCommOperationException
-import javafx.scene.control.Alert
+import java.io.IOException
 import java.util.*
 
 object SerialPortMan {
 
 	private var serialPort: SerialPort? = null
 	private val commPortIdentifierMap = sortedMapOf<String, CommPortIdentifier>()
+
+	init {
+		findCommPorts()
+	}
 
 	fun findCommPorts(): List<String> {
 		println("进入findCommPorts()")
@@ -28,19 +33,58 @@ object SerialPortMan {
 		return commPortIdentifierMap.keys.toList()
 	}
 
+	fun listSerialPortsInfo(): List<SerialPortInfo> {
+		println("进入listSerialPortsInfo()")
+		val infoList = mutableListOf<SerialPortInfo>()
+
+		commPortIdentifierMap.keys.forEach { portName ->
+			infoList.add(SerialPortInfo().apply {
+				name = portName
+				serialPort?.also {
+					active = nameIsSame(portName, it.name)
+					if (active) {
+						baudRate = it.baudRate
+						dataBits = it.dataBits
+						stopBits = it.stopBits
+						parity = it.parity
+					}
+				}
+			})
+		}
+
+		return infoList
+	}
+
+	fun querySerialPortInfo(portName: String): SerialPortInfo {
+		if (!commPortIdentifierMap.keys.contains(portName)) {
+			throw BadRequestException("串口不存在：$portName")
+		}
+		return SerialPortInfo().apply {
+			name = portName
+			serialPort?.also {
+				active = nameIsSame(portName, it.name)
+				if (active) {
+					baudRate = it.baudRate
+					dataBits = it.dataBits
+					stopBits = it.stopBits
+					parity = it.parity
+				}
+			}
+		}
+	}
+
 	fun closeSerialPort() {
 		serialPort?.close()
 		serialPort = null
 	}
 
-	fun openSerialPort(portName: String, baudRate: Int, dataBits: Int, stopBits: Int, parity: Int): Boolean {
+	fun openSerialPort(portName: String, baudRate: Int, dataBits: Int, stopBits: Int, parity: Int) {
 		closeSerialPort()
 
-		val portIdentifier = commPortIdentifierMap[portName] ?: return false
+		val portIdentifier = commPortIdentifierMap[portName] ?: throw BadRequestException("串口不存在：$portName")
 
 		if (portIdentifier.isCurrentlyOwned) {
-			Alert(Alert.AlertType.ERROR, "端口被占用。").showAndWait()
-			return false
+			throw IOException("端口 $portName 被 ${portIdentifier.currentOwner} 占用。")
 		}
 
 		try {
@@ -50,35 +94,24 @@ object SerialPortMan {
 				serialPort = commPort
 			} else {
 				commPort.close()
-				Alert(Alert.AlertType.ERROR, "不是串行口。").showAndWait()
-				return false
+				throw IOException("端口 $portName 不是串行口。")
 			}
 		} catch (e: PortInUseException) {
 			e.printStackTrace()
-			Alert(Alert.AlertType.ERROR, "端口被占用。").showAndWait()
-			return false
+			throw IOException("端口 $portName 被 ${portIdentifier.currentOwner} 占用。")
 		}
 
-		try {
-			with(serialPort!!) {
-				setSerialPortParams(baudRate, dataBits, stopBits, parity)
-//				addEventListener {
-//					MbusReceiver.onSerialEvent(this@with, it)
-//				}
-				notifyOnDataAvailable(true)
-				notifyOnParityError(true)
-				return true
-			}
-		} catch (e: UnsupportedCommOperationException) {
-			e.printStackTrace()
-			Alert(Alert.AlertType.ERROR, "参数错误。").showAndWait()
-		} catch (e: TooManyListenersException) {
-			e.printStackTrace()
+		println("串口 ${serialPort!!.name} 已成功打开。")
+		with(serialPort!!) {
+			setSerialPortParams(baudRate, dataBits, stopBits, parity)
+			notifyOnDataAvailable(true)
+			notifyOnParityError(true)
 		}
-
-		closeSerialPort()
-		return false
+		println("串口参数已经设置。")
 	}
+
+	private fun nameIsSame(stdName: String, fullName: String): Boolean =
+			fullName == stdName || fullName == "//./$stdName"
 
 	/*
 	private object MbusReceiver {
