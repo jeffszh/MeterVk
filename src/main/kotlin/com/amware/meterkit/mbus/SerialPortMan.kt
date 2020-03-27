@@ -5,16 +5,28 @@ import com.amware.meterkit.service.BadRequestException
 import gnu.io.CommPortIdentifier
 import gnu.io.PortInUseException
 import gnu.io.SerialPort
+import gnu.io.SerialPortEvent
+import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.util.*
+import java.util.concurrent.Semaphore
+import java.util.concurrent.TimeUnit
 
 object SerialPortMan {
 
 	private var serialPort: SerialPort? = null
 	private val commPortIdentifierMap = sortedMapOf<String, CommPortIdentifier>()
+	private val dataAvailableSignal = Semaphore(0)
+	private val parityErrorSignal = Semaphore(0)
 
 	init {
 		findCommPorts()
+	}
+
+	private fun clearSignal(semaphore: Semaphore) {
+		while (semaphore.tryAcquire()) {
+			// do nothing
+		}
 	}
 
 	fun findCommPorts(): List<String> {
@@ -106,12 +118,72 @@ object SerialPortMan {
 			setSerialPortParams(baudRate, dataBits, stopBits, parity)
 			notifyOnDataAvailable(true)
 			notifyOnParityError(true)
+			inputBufferSize = 2048
+			addEventListener {
+				when (it.eventType) {
+					SerialPortEvent.PE -> parityErrorSignal.release()
+					SerialPortEvent.DATA_AVAILABLE -> dataAvailableSignal.release()
+				}
+			}
 		}
 		println("串口参数已经设置。")
 	}
 
 	private fun nameIsSame(stdName: String, fullName: String): Boolean =
 			fullName == stdName || fullName == "//./$stdName"
+
+	private fun clearResidua() {
+		serialPort?.inputStream?.use { inputStream ->
+			while (inputStream.available() > 0) {
+				inputStream.read(ByteArray(1024))
+			}
+		}
+		clearSignal(dataAvailableSignal)
+		clearSignal(parityErrorSignal)
+	}
+
+	fun sendAndReceive(data: ByteArray): ByteArray {
+		val serialPort = serialPort ?: throw BadRequestException("串口未打开")
+		println("serialPort.inputBufferSize = ${serialPort.inputBufferSize}")
+
+		// 清除掉可能存在的上次通讯的残余
+		clearResidua()
+
+		serialPort.outputStream.use { outputStream ->
+			repeat(6) {
+				outputStream.write(0xFE)
+			}
+			outputStream.write(data)
+			outputStream.flush()
+		}
+//		Thread.sleep(500)
+
+		serialPort.inputStream.use { inputStream ->
+			if (!dataAvailableSignal.tryAcquire(2, TimeUnit.SECONDS)) {
+				throw IOException("串口响应超时。")
+			}
+
+			val resultStream = ByteArrayOutputStream()
+			while (inputStream.available() > 0) {
+				val buffer = ByteArray(1024)
+				val recLen = inputStream.read(buffer)
+				if (recLen > 0) {
+//					println("收到 $recLen 个字节")
+					resultStream.write(buffer, 0, recLen)
+				} else {
+					break
+				}
+				dataAvailableSignal.tryAcquire(100, TimeUnit.MILLISECONDS)
+			}
+			if (resultStream.size() <= 0) {
+				throw IOException("收不到串口数据。")
+			}
+			if (parityErrorSignal.tryAcquire()) {
+				throw IOException("串口奇偶校验错！")
+			}
+			return resultStream.toByteArray()
+		}
+	}
 
 	/*
 	private object MbusReceiver {
