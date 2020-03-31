@@ -4,9 +4,9 @@ Accept: application/json
 Cache-Control: no-cache
 
 {
-	"name": "ttyS0",
+	"name": "COM6",
 	"active": true,
-	"baudRate": 115200,
+	"baudRate": 2400,
 	"dataBits": 8,
 	"stopBits": 1,
 	"parity": 2

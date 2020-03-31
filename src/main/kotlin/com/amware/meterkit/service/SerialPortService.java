@@ -51,7 +51,7 @@ public class SerialPortService {
 
 	/**
 	 * <h1>打开或关闭串口</h1>
-	 * 传入参数的 active 为 true，表示打开串口，此时串口名以及波特率等所有参数必须设置为合法值，否则出错；
+	 * 当传入参数的 active 为 true，表示打开串口，此时串口名以及波特率等所有参数必须设置为合法值，否则出错；
 	 * 当传入参数的 active 为 false，表示关闭串口，此时只有串口名是有用的，其他参数可以缺席。
 	 *
 	 * @param portInfo 串口参数

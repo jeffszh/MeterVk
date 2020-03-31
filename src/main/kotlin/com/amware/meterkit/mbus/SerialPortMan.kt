@@ -1,11 +1,16 @@
 package com.amware.meterkit.mbus
 
+import cn.amware.mbus.data.MeterData
+import cn.amware.mbus.data.MeterPacket
+import cn.amware.mbus.data.rd
+import cn.amware.mbus.data.wr
 import com.amware.meterkit.entity.SerialPortInfo
 import com.amware.meterkit.service.BadRequestException
 import gnu.io.CommPortIdentifier
 import gnu.io.PortInUseException
 import gnu.io.SerialPort
 import gnu.io.SerialPortEvent
+import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.util.*
@@ -183,6 +188,24 @@ object SerialPortMan {
 			}
 			return resultStream.toByteArray()
 		}
+	}
+
+	fun sendAndReceive(packet: MeterPacket): List<Pair<String, MeterData>> {
+		val outStream = ByteArrayOutputStream()
+		outStream wr packet
+		val recData = sendAndReceive(outStream.toByteArray())
+		val inStream = ByteArrayInputStream(recData)
+		val result = mutableListOf<Pair<String, MeterData>>()
+		inStream.use {
+			while (it.available() > 0) {
+				val meterPacket = MeterPacket()
+				it rd meterPacket
+				val meterData = MeterData()
+				ByteArrayInputStream(meterPacket.data) rd meterData
+				result.add(meterPacket.address.asHex to meterData)
+			}
+		}
+		return result
 	}
 
 	/*
