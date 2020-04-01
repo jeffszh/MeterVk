@@ -3,7 +3,7 @@ package com.amware.meterkit.service
 import cn.amware.mbus.data.MeterDataType
 import cn.amware.mbus.data.body.FlowData
 import cn.amware.mbus.data.builder.MeterPacketBuilder
-import com.amware.meterkit.entity.MeterServiceData
+import cn.amware.utils.DataUtils
 import com.amware.meterkit.entity.MsdFlowData
 import com.amware.meterkit.mbus.SerialPortMan.sendAndReceive
 import org.springframework.stereotype.Service
@@ -12,8 +12,31 @@ import java.io.IOException
 @Service
 class MeterServiceKt {
 
-	fun getFlowData(inputParam: MeterServiceData): MsdFlowData {
-		val address = inputParam.address ?: "AA AA AA AA AA AA AA"
+	private fun checkAndReverseAddress(nullableAddress: String?): String {
+		println("nullableAddress=[$nullableAddress]")
+		val address = nullableAddress ?: "AA AA AA AA AA AA AA"
+		try {
+			val addressBytes = DataUtils.hexStrToBytes(address)
+			if (addressBytes.size != 7) {
+				throw BadRequestException("address必须是7个字节的16进制字符串。")
+			}
+			val revAddressBytes = DataUtils.reversedArray(addressBytes)
+			return DataUtils.bytesToHexStr(*revAddressBytes)
+		} catch (e: Exception) {
+			e.printStackTrace()
+			throw BadRequestException("address必须是7个字节的16进制字符串。")
+		}
+	}
+
+	private fun reverseAddress(address: String): String =
+			DataUtils.bytesToHexStr(
+					* DataUtils.reversedArray(
+							DataUtils.hexStrToBytes(address)
+					)
+			)
+
+	fun getFlowData(nullableAddress: String?): MsdFlowData {
+		val address = checkAndReverseAddress(nullableAddress)
 		val meterPacket = MeterPacketBuilder.buildReadNormalDataPacket(
 				address, MeterDataType.FLOW_DATA)
 		meterPacket.ctrlCode = 0x01
@@ -28,7 +51,7 @@ class MeterServiceKt {
 			}
 			with(body) {
 				MsdFlowData(
-						meterAddress,
+						reverseAddress(meterAddress),
 						sumOfFlow.asString.toDouble(),
 						unit1.value.text,
 						negSumOfFlow.asString.toDouble(),

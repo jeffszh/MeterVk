@@ -1,6 +1,5 @@
 package com.amware.meterkit.service;
 
-import com.amware.meterkit.entity.MeterServiceData;
 import com.amware.meterkit.entity.MsdFlowData;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -28,8 +27,8 @@ public class MeterService {
 
 	@GetMapping(FLOW_DATA)
 	@RequestEntry(value = SERVICE_ENTRY + FLOW_DATA, method = RequestMethod.GET)
-	public MsdFlowData getFlowData(@RequestBody MeterServiceData inputParam) {
-		return serviceKt.getFlowData(inputParam);
+	public MsdFlowData getFlowData(String address) {
+		return serviceKt.getFlowData(address);
 	}
 
 }
