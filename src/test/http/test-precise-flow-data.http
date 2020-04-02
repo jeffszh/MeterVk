@@ -1,0 +1,7 @@
+GET http://localhost:7406/meter-service/precise-flow-data?address=AA AA AA AA AA AA AA
+Content-Type: application/json;charset=UTF-8
+Accept: application/json
+Cache-Control: no-cache
+
+###
+

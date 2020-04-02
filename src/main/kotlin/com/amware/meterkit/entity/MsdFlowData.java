@@ -25,7 +25,7 @@ package com.amware.meterkit.entity;
  * </ul>
  * 其他水表数据中凡是涉及到单位的，也是同样如此，不再赘述。
  */
-@SuppressWarnings("unused")
+@SuppressWarnings({"unused", "WeakerAccess"})
 public class MsdFlowData extends MeterServiceData {
 
 	/**
