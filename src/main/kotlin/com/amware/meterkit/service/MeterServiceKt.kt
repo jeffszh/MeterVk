@@ -1,10 +1,12 @@
 package com.amware.meterkit.service
 
 import cn.amware.mbus.data.MeterDataType
+import cn.amware.mbus.data.body.DebuggingUiData
 import cn.amware.mbus.data.body.FlowData
 import cn.amware.mbus.data.body.PreciseFlowData
 import cn.amware.mbus.data.builder.MeterPacketBuilder
 import cn.amware.utils.DataUtils
+import com.amware.meterkit.entity.MsdDebuggingUiData
 import com.amware.meterkit.entity.MsdFlowData
 import com.amware.meterkit.entity.MsdPreciseFlowData
 import com.amware.meterkit.mbus.SerialPortMan.sendAndReceive
@@ -55,9 +57,9 @@ class MeterServiceKt {
 			with(body) {
 				MsdFlowData(
 						reverseAddress(meterAddress),
-						sumOfFlow.asString.toDoubleOrNull()?: Double.NaN,
+						sumOfFlow.asString.toDoubleOrNull() ?: Double.NaN,
 						unit1.value.text,
-						negSumOfFlow.asString.toDoubleOrNull()?: Double.NaN,
+						negSumOfFlow.asString.toDoubleOrNull() ?: Double.NaN,
 						unit2.value.text,
 						realTimeClock.toString(),
 						bitField.bytes[0],
@@ -86,16 +88,54 @@ class MeterServiceKt {
 			with(body) {
 				MsdPreciseFlowData(
 						reverseAddress(meterAddress),
-						sumOfCooling.asString.toDoubleOrNull()?: Double.NaN,
+						sumOfCooling.asString.toDoubleOrNull() ?: Double.NaN,
 						unit1.text,
-						sumOfHeat.asString.toDoubleOrNull()?: Double.NaN,
+						sumOfHeat.asString.toDoubleOrNull() ?: Double.NaN,
 						unit2.text,
-						instantPower.asString.toDoubleOrNull()?: Double.NaN,
+						instantPower.asString.toDoubleOrNull() ?: Double.NaN,
 						unit3.text,
-						instantFlow.asString.toDoubleOrNull()?: Double.NaN,
+						instantFlow.asString.toDoubleOrNull() ?: Double.NaN,
 						unit4.text,
-						sumOfFlow.asString.toDoubleOrNull()?: Double.NaN,
+						sumOfFlow.asString.toDoubleOrNull() ?: Double.NaN,
 						unit5.text
+				)
+			}
+		} else {
+			throw IOException("收不到串口数据。")
+		}
+	}
+
+	fun getDebuggingUiData(@RequestParam nullableAddress: String?): MsdDebuggingUiData {
+		val address = checkAndReverseAddress(nullableAddress)
+		val meterPacket = MeterPacketBuilder.buildReadNormalDataPacket(
+				address, MeterDataType.DEBUGGING_UI_DATA)
+		meterPacket.ctrlCode = 0x01
+
+		val resultList = sendAndReceive(meterPacket)
+		return if (resultList.isNotEmpty()) {
+			val (meterAddress, meterData) = resultList[0]
+			val (head, body) = meterData
+			if (head.dataTag != MeterDataType.DEBUGGING_UI_DATA.tag ||
+					body !is DebuggingUiData) {
+				throw IOException("收到错误的数据。")
+			}
+			with(body) {
+				MsdDebuggingUiData(
+						reverseAddress(meterAddress),
+						programVersion.value.toInt(),
+						supplyReturnFlag.bytes[0] > 0,
+						instrumentFactor.asString.toDoubleOrNull() ?: Double.NaN,
+						lowFlowExcision.asString.toDoubleOrNull() ?: Double.NaN,
+						flowCompensation1.asString.toDoubleOrNull() ?: Double.NaN,
+						flowCompensation2.asString.toDoubleOrNull() ?: Double.NaN,
+						flowCompensation3.asString.toDoubleOrNull() ?: Double.NaN,
+						flowCompensation4.asString.toDoubleOrNull() ?: Double.NaN,
+						supplyingTemperatureCompensation.asString
+								.toDoubleOrNull() ?: Double.NaN,
+						returningTemperatureCompensation.asString
+								.toDoubleOrNull() ?: Double.NaN,
+						introductionDate.asString,
+						caliber.asString.toDoubleOrNull() ?: Double.NaN
 				)
 			}
 		} else {

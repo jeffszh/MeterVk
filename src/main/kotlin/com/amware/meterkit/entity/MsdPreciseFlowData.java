@@ -1,5 +1,8 @@
 package com.amware.meterkit.entity;
 
+/**
+ * <h1>高精度流量数据</h1>
+ */
 @SuppressWarnings({"unused", "WeakerAccess"})
 public class MsdPreciseFlowData extends MeterServiceData {
 
