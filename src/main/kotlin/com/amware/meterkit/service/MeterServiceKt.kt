@@ -1,35 +1,84 @@
 package com.amware.meterkit.service
 
-import cn.amware.mbus.data.MeterDataType
+import cn.amware.mbus.data.*
+import cn.amware.mbus.data.body.CurrentCumulativeData
 import cn.amware.mbus.data.body.DebuggingUiData
 import cn.amware.mbus.data.body.FlowData
 import cn.amware.mbus.data.body.PreciseFlowData
 import cn.amware.mbus.data.builder.MeterPacketBuilder
 import cn.amware.utils.DataUtils
+import com.alibaba.fastjson.JSON
+import com.alibaba.fastjson.serializer.SerializerFeature
+import com.amware.meterkit.entity.MsdCurrentCumulativeData
 import com.amware.meterkit.entity.MsdDebuggingUiData
 import com.amware.meterkit.entity.MsdFlowData
 import com.amware.meterkit.entity.MsdPreciseFlowData
 import com.amware.meterkit.mbus.SerialPortMan.sendAndReceive
 import org.springframework.stereotype.Service
 import org.springframework.web.bind.annotation.RequestParam
+import java.io.ByteArrayOutputStream
+import java.io.FileInputStream
+import java.io.FileOutputStream
 import java.io.IOException
+import java.nio.charset.StandardCharsets
 
 @Service
 class MeterServiceKt {
+
+	private var addressPrefix = "11 11 00"
+
+	companion object {
+		private const val configFileName = "MeterServiceConfig.json"
+	}
+
+	private class MeterServiceConfig {
+		var addressPrefix: String = ""
+	}
+
+	init {
+		loadConfig()
+	}
+
+	private fun loadConfig() {
+		try {
+			FileInputStream(configFileName).use {
+				val config = JSON.parseObject<MeterServiceConfig>(
+						it, StandardCharsets.UTF_8, MeterServiceConfig::class.java)
+				if (DataUtils.hexStrToBytes(config.addressPrefix).size != 3) {
+					throw IOException("配置文件错误。")
+				}
+				addressPrefix = config.addressPrefix.trim()
+			}
+		} catch (e: Exception) {
+			e.printStackTrace()
+			val config = MeterServiceConfig()
+			config.addressPrefix = "11 11 00"
+			FileOutputStream(configFileName).use {
+				JSON.writeJSONString(it, config, SerializerFeature.PrettyFormat)
+			}
+		}
+	}
 
 	private fun checkAndReverseAddress(nullableAddress: String?): String {
 		println("nullableAddress=[$nullableAddress]")
 		val address = nullableAddress ?: "AA AA AA AA AA AA AA"
 		try {
 			val addressBytes = DataUtils.hexStrToBytes(address)
-			if (addressBytes.size != 7) {
-				throw BadRequestException("address必须是7个字节的16进制字符串。")
+			return when (addressBytes.size) {
+				4 -> {
+					val revAddressBytes = DataUtils.reversedArray(addressBytes)
+					val revPrefix = DataUtils.reversedArray(DataUtils.hexStrToBytes(addressPrefix))
+					DataUtils.bytesToHexStr(*revAddressBytes, *revPrefix)
+				}
+				7 -> {
+					val revAddressBytes = DataUtils.reversedArray(addressBytes)
+					DataUtils.bytesToHexStr(*revAddressBytes)
+				}
+				else -> throw BadRequestException("address必须是4或7个字节的16进制字符串。")
 			}
-			val revAddressBytes = DataUtils.reversedArray(addressBytes)
-			return DataUtils.bytesToHexStr(*revAddressBytes)
 		} catch (e: Exception) {
 			e.printStackTrace()
-			throw BadRequestException("address必须是7个字节的16进制字符串。")
+			throw BadRequestException("address必须是4或7个字节的16进制字符串。")
 		}
 	}
 
@@ -141,6 +190,29 @@ class MeterServiceKt {
 		} else {
 			throw IOException("收不到串口数据。")
 		}
+	}
+
+	fun writeCurrentCumulativeData(msdCurrentCumulativeData: MsdCurrentCumulativeData) {
+		val address = checkAndReverseAddress(msdCurrentCumulativeData.address)
+		val currentCumulativeData = with(msdCurrentCumulativeData) {
+			CurrentCumulativeData(
+					Bcd50().apply {
+						value = sumOfCooling
+					},
+					Units.fromString(unit1) ?: Units.Unknown,
+			)
+		}
+
+		val meterData = MeterData()
+		meterData.body = currentCumulativeData
+		meterData.head.dataId.asHex = MeterDataType.CURRENT_CUMULATIVE_DATA.tag
+		meterData.head.seq = generateNextSeq()
+		val bs = ByteArrayOutputStream()
+		bs wr meterData
+		val meterPacket = MeterPacket(0x20, HexData7().apply {
+			asHex = address
+		}, 0x04, bs.toByteArray())
+		println(meterPacket)
 	}
 
 }

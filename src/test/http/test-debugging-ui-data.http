@@ -1,4 +1,4 @@
-GET http://localhost:7406/meter-service/precise-flow-data?address=ef cd ab 89
+GET http://localhost:7406/meter-service/debugging-ui-data
 Content-Type: application/json;charset=UTF-8
 Accept: application/json
 Cache-Control: no-cache
