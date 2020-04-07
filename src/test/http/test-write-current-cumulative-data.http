@@ -1,0 +1,16 @@
+POST http://localhost:7406/meter-service/current-cumulative-data
+Content-Type: application/json;charset=UTF-8
+Accept: application/json
+Cache-Control: no-cache
+
+{
+	"sumOfCooling": 123,
+	"unit1": "W",
+	"sumOfHeat": 456,
+	"unit2": "W",
+	"sumOfFlow": 1234.567,
+	"unit3": "L"
+}
+
+###
+

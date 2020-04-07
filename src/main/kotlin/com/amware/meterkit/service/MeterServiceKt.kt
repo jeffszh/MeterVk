@@ -13,7 +13,7 @@ import com.amware.meterkit.entity.MsdCurrentCumulativeData
 import com.amware.meterkit.entity.MsdDebuggingUiData
 import com.amware.meterkit.entity.MsdFlowData
 import com.amware.meterkit.entity.MsdPreciseFlowData
-import com.amware.meterkit.mbus.SerialPortMan.sendAndReceive
+import com.amware.meterkit.mbus.SerialPortMan
 import org.springframework.stereotype.Service
 import org.springframework.web.bind.annotation.RequestParam
 import java.io.ByteArrayOutputStream
@@ -95,7 +95,7 @@ class MeterServiceKt {
 				address, MeterDataType.FLOW_DATA)
 		meterPacket.ctrlCode = 0x01
 
-		val resultList = sendAndReceive(meterPacket)
+		val resultList = SerialPortMan.sendAndReceive(meterPacket)
 		return if (resultList.isNotEmpty()) {
 			val (meterAddress, meterData) = resultList[0]
 			val (head, body) = meterData
@@ -126,7 +126,7 @@ class MeterServiceKt {
 				address, MeterDataType.PRECISE_FLOW_DATA)
 		meterPacket.ctrlCode = 0x01
 
-		val resultList = sendAndReceive(meterPacket)
+		val resultList = SerialPortMan.sendAndReceive(meterPacket)
 		return if (resultList.isNotEmpty()) {
 			val (meterAddress, meterData) = resultList[0]
 			val (head, body) = meterData
@@ -160,7 +160,7 @@ class MeterServiceKt {
 				address, MeterDataType.DEBUGGING_UI_DATA)
 		meterPacket.ctrlCode = 0x01
 
-		val resultList = sendAndReceive(meterPacket)
+		val resultList = SerialPortMan.sendAndReceive(meterPacket)
 		return if (resultList.isNotEmpty()) {
 			val (meterAddress, meterData) = resultList[0]
 			val (head, body) = meterData
@@ -194,13 +194,26 @@ class MeterServiceKt {
 
 	fun writeCurrentCumulativeData(msdCurrentCumulativeData: MsdCurrentCumulativeData) {
 		val address = checkAndReverseAddress(msdCurrentCumulativeData.address)
-		val currentCumulativeData = with(msdCurrentCumulativeData) {
-			CurrentCumulativeData(
-					Bcd50().apply {
-						value = sumOfCooling
-					},
-					Units.fromString(unit1) ?: Units.Unknown,
-			)
+		val currentCumulativeData = try {
+			with(msdCurrentCumulativeData) {
+				CurrentCumulativeData(
+						Bcd50().apply {
+							value = sumOfCooling
+						},
+						Units.fromString(unit1) ?: throw BadRequestException("$unit1 不是合法的单位。"),
+						Bcd50().apply {
+							value = sumOfHeat
+						},
+						Units.fromString(unit2) ?: throw BadRequestException("$unit2 不是合法的单位。"),
+						Bcd42().apply {
+							asString = sumOfFlow.toString()
+						},
+						Units.fromString(unit3) ?: throw BadRequestException("$unit3 不是合法的单位。")
+				)
+			}
+		} catch (e: Exception) {
+			e.printStackTrace()
+			throw BadRequestException(e.message ?: "输入参数错误。")
 		}
 
 		val meterData = MeterData()
@@ -213,6 +226,17 @@ class MeterServiceKt {
 			asHex = address
 		}, 0x04, bs.toByteArray())
 		println(meterPacket)
+
+		val resultList = SerialPortMan.sendAndReceive(meterPacket)
+		if (resultList.isNotEmpty()) {
+			val (_, recMeterData) = resultList[0]
+			val (head, _) = recMeterData
+			if (head.dataTag != MeterDataType.CURRENT_CUMULATIVE_DATA.tag) {
+				throw IOException("收到错误的数据。")
+			}
+		} else {
+			throw IOException("收不到串口数据。")
+		}
 	}
 
 }

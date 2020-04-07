@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.*;
  * <h1>操作水表的服务</h1>
  * 通过此服务，可对水表进行各种数据的读写。
  *
- * <h3>关于水表的地址</h3>
+ * <h2>关于水表的地址</h2>
  * 每个水表在出厂的时候，都会赋予一个唯一地址。
  * 此地址是7个字节的十六进制数，但取值只会用0-9，不会出现A-F，也就是BCD码。
  * 特殊地址 AA AA AA AA AA AA AA 表示广播。
@@ -81,6 +81,11 @@ public class MeterService {
 		return serviceKt.getDebuggingUiData(address);
 	}
 
+	/**
+	 * 写当前数据
+	 *
+	 * @param currentCumulativeData 当前累计数据
+	 */
 	@PostMapping(CURRENT_CUMULATIVE_DATA)
 	@RequestEntry(value = SERVICE_ENTRY + CURRENT_CUMULATIVE_DATA, method = RequestMethod.POST)
 	public void writeCurrentCumulativeData(
