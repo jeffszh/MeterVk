@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.*;
  * 使用广播地址的时候，应确保串口上只连接了一个水表，否则会乱套。
  */
 @RestController
+@CrossOrigin
 @RequestMapping(MeterService.CLASS_ENTRY)
 public class MeterService {
 
@@ -36,6 +37,7 @@ public class MeterService {
 	private static final String PRECISE_FLOW_DATA = "/precise-flow-data";
 	private static final String DEBUGGING_UI_DATA = "/debugging-ui-data";
 	private static final String CURRENT_CUMULATIVE_DATA = "/current-cumulative-data";
+	private static final String START_TESTING = "/start-testing";
 
 	@Autowired
 	public MeterService(MeterServiceKt serviceKt) {
@@ -91,6 +93,17 @@ public class MeterService {
 	public void writeCurrentCumulativeData(
 			@RequestBody MsdCurrentCumulativeData currentCumulativeData) {
 		serviceKt.writeCurrentCumulativeData(currentCumulativeData);
+	}
+
+	/**
+	 * 启动检定
+	 *
+	 * @param address 水表地址，若缺席表示广播。
+	 */
+	@PostMapping(START_TESTING)
+	@RequestEntry(value = SERVICE_ENTRY + START_TESTING, method = RequestMethod.POST)
+	public void startTesting(@RequestParam(required = false) String address) {
+		serviceKt.startTesting(address);
 	}
 
 }

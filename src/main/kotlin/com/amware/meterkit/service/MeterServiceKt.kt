@@ -15,12 +15,12 @@ import com.amware.meterkit.entity.MsdFlowData
 import com.amware.meterkit.entity.MsdPreciseFlowData
 import com.amware.meterkit.mbus.SerialPortMan
 import org.springframework.stereotype.Service
-import org.springframework.web.bind.annotation.RequestParam
 import java.io.ByteArrayOutputStream
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.IOException
 import java.nio.charset.StandardCharsets
+import kotlin.experimental.and
 
 @Service
 class MeterServiceKt {
@@ -29,6 +29,7 @@ class MeterServiceKt {
 
 	companion object {
 		private const val configFileName = "MeterServiceConfig.json"
+		private const val START_TESTING_DATA_TAG = "02A0"
 	}
 
 	private class MeterServiceConfig {
@@ -97,7 +98,7 @@ class MeterServiceKt {
 
 		val resultList = SerialPortMan.sendAndReceive(meterPacket)
 		return if (resultList.isNotEmpty()) {
-			val (meterAddress, meterData) = resultList[0]
+			val (meterAddress, _, meterData) = resultList[0]
 			val (head, body) = meterData
 			if (head.dataTag != MeterDataType.FLOW_DATA.tag ||
 					body !is FlowData) {
@@ -120,7 +121,7 @@ class MeterServiceKt {
 		}
 	}
 
-	fun getPreciseFlowData(@RequestParam nullableAddress: String?): MsdPreciseFlowData {
+	fun getPreciseFlowData(nullableAddress: String?): MsdPreciseFlowData {
 		val address = checkAndReverseAddress(nullableAddress)
 		val meterPacket = MeterPacketBuilder.buildReadNormalDataPacket(
 				address, MeterDataType.PRECISE_FLOW_DATA)
@@ -128,7 +129,7 @@ class MeterServiceKt {
 
 		val resultList = SerialPortMan.sendAndReceive(meterPacket)
 		return if (resultList.isNotEmpty()) {
-			val (meterAddress, meterData) = resultList[0]
+			val (meterAddress, _, meterData) = resultList[0]
 			val (head, body) = meterData
 			if (head.dataTag != MeterDataType.PRECISE_FLOW_DATA.tag ||
 					body !is PreciseFlowData) {
@@ -154,7 +155,7 @@ class MeterServiceKt {
 		}
 	}
 
-	fun getDebuggingUiData(@RequestParam nullableAddress: String?): MsdDebuggingUiData {
+	fun getDebuggingUiData(nullableAddress: String?): MsdDebuggingUiData {
 		val address = checkAndReverseAddress(nullableAddress)
 		val meterPacket = MeterPacketBuilder.buildReadNormalDataPacket(
 				address, MeterDataType.DEBUGGING_UI_DATA)
@@ -162,7 +163,7 @@ class MeterServiceKt {
 
 		val resultList = SerialPortMan.sendAndReceive(meterPacket)
 		return if (resultList.isNotEmpty()) {
-			val (meterAddress, meterData) = resultList[0]
+			val (meterAddress, _, meterData) = resultList[0]
 			val (head, body) = meterData
 			if (head.dataTag != MeterDataType.DEBUGGING_UI_DATA.tag ||
 					body !is DebuggingUiData) {
@@ -229,9 +230,33 @@ class MeterServiceKt {
 
 		val resultList = SerialPortMan.sendAndReceive(meterPacket)
 		if (resultList.isNotEmpty()) {
-			val (_, recMeterData) = resultList[0]
+			val (_, _, recMeterData) = resultList[0]
 			val (head, _) = recMeterData
 			if (head.dataTag != MeterDataType.CURRENT_CUMULATIVE_DATA.tag) {
+				throw IOException("收到错误的数据。")
+			}
+		} else {
+			throw IOException("收不到串口数据。")
+		}
+	}
+
+	fun startTesting(nullableAddress: String?) {
+		val address = checkAndReverseAddress(nullableAddress)
+		val meterPacket = MeterPacketBuilder.buildReadNormalDataPacket(
+				address, START_TESTING_DATA_TAG)
+		meterPacket.ctrlCode = 0x04
+
+		val resultList = SerialPortMan.sendAndReceive(meterPacket)
+		if (resultList.isNotEmpty()) {
+			val (meterAddress, ctrlCode, meterData) = resultList[0]
+			println("启动检定回应包，地址=$meterAddress，" +
+					"控制码=${String.format("0x%02X", ctrlCode.toInt() and 0xFF)}")
+			if (ctrlCode and 0x40 != 0.toByte()) {
+				throw IOException("通讯异常，收到控制码为：$ctrlCode")
+			}
+			val (head, _) = meterData
+			println("dataTag=${head.dataTag}")
+			if (head.dataTag != START_TESTING_DATA_TAG) {
 				throw IOException("收到错误的数据。")
 			}
 		} else {

@@ -100,6 +100,25 @@ object SerialPortMan {
 
 		val portIdentifier = commPortIdentifierMap[portName] ?: throw BadRequestException("串口不存在：$portName")
 
+		when (baudRate) {
+			2400, 9600, 115200 -> {
+				// do nothing
+			}
+			else -> throw BadRequestException("波特率必须是：2400、9600或115200。")
+		}
+
+		if (dataBits !in 7..8) {
+			throw BadRequestException("数据位必须是7或8。")
+		}
+
+		if (stopBits !in 1..2) {
+			throw BadRequestException("停止位必须是1或2。")
+		}
+
+		if (parity !in 0..2) {
+			throw BadRequestException("奇偶校验必须是0到2。")
+		}
+
 		if (portIdentifier.isCurrentlyOwned) {
 			throw IOException("端口 $portName 被 ${portIdentifier.currentOwner} 占用。")
 		}
@@ -190,19 +209,19 @@ object SerialPortMan {
 		}
 	}
 
-	fun sendAndReceive(packet: MeterPacket): List<Pair<String, MeterData>> {
+	fun sendAndReceive(packet: MeterPacket): List<Triple<String, Byte, MeterData>> {
 		val outStream = ByteArrayOutputStream()
 		outStream wr packet
 		val recData = sendAndReceive(outStream.toByteArray())
 		val inStream = ByteArrayInputStream(recData)
-		val result = mutableListOf<Pair<String, MeterData>>()
+		val result = mutableListOf<Triple<String, Byte, MeterData>>()
 		inStream.use {
 			while (it.available() > 0) {
 				val meterPacket = MeterPacket()
 				it rd meterPacket
 				val meterData = MeterData()
 				ByteArrayInputStream(meterPacket.data) rd meterData
-				result.add(meterPacket.address.asHex to meterData)
+				result.add(Triple(meterPacket.address.asHex, meterPacket.ctrlCode, meterData))
 			}
 		}
 		return result

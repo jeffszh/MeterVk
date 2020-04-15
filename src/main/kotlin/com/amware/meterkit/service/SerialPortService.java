@@ -11,6 +11,7 @@ import java.util.List;
  * 包括读取单个或所有串口的状态，打开或关闭某个串口。
  */
 @RestController
+@CrossOrigin
 @RequestMapping(SerialPortService.CLASS_ENTRY)
 public class SerialPortService {
 
