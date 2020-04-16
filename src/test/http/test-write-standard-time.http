@@ -1,0 +1,16 @@
+POST http://localhost:7406/meter-service/standard-time
+Content-Type: application/json;charset=UTF-8
+Accept: application/json
+Cache-Control: no-cache
+
+{
+    "year": 1921,
+    "month": 7,
+    "day": 2,
+    "hour": 13,
+    "minute": 9,
+    "second": 45
+}
+
+###
+

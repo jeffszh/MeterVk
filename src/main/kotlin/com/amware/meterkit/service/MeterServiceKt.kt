@@ -1,18 +1,12 @@
 package com.amware.meterkit.service
 
 import cn.amware.mbus.data.*
-import cn.amware.mbus.data.body.CurrentCumulativeData
-import cn.amware.mbus.data.body.DebuggingUiData
-import cn.amware.mbus.data.body.FlowData
-import cn.amware.mbus.data.body.PreciseFlowData
+import cn.amware.mbus.data.body.*
 import cn.amware.mbus.data.builder.MeterPacketBuilder
 import cn.amware.utils.DataUtils
 import com.alibaba.fastjson.JSON
 import com.alibaba.fastjson.serializer.SerializerFeature
-import com.amware.meterkit.entity.MsdCurrentCumulativeData
-import com.amware.meterkit.entity.MsdDebuggingUiData
-import com.amware.meterkit.entity.MsdFlowData
-import com.amware.meterkit.entity.MsdPreciseFlowData
+import com.amware.meterkit.entity.*
 import com.amware.meterkit.mbus.SerialPortMan
 import org.springframework.stereotype.Service
 import java.io.ByteArrayOutputStream
@@ -258,6 +252,100 @@ class MeterServiceKt {
 			println("dataTag=${head.dataTag}")
 			if (head.dataTag != START_TESTING_DATA_TAG) {
 				throw IOException("收到错误的数据。")
+			}
+		} else {
+			throw IOException("收不到串口数据。")
+		}
+	}
+
+	fun readStandardTime(nullableAddress: String?): MsdStandardTimeData {
+		val address = checkAndReverseAddress(nullableAddress)
+		val meterPacket = MeterPacketBuilder.buildReadNormalDataPacket(
+				address, MeterDataType.STANDARD_TIME_DATA)
+		meterPacket.instrumentType = 0x20
+		meterPacket.ctrlCode = 0x01
+
+		val resultList = SerialPortMan.sendAndReceive(meterPacket)
+		return if (resultList.isNotEmpty()) {
+			val (meterAddress, ctrlCode, meterData) = resultList[0]
+			if (ctrlCode and 0x40 != 0.toByte()) {
+				throw IOException("通讯异常，收到控制码为：$ctrlCode")
+			}
+			val (head, body) = meterData
+			if (head.dataTag != MeterDataType.STANDARD_TIME_DATA.tag ||
+					body !is StandardTimeData) {
+				throw IOException("串口收到错误的数据。")
+			}
+//			val dateFormat = SimpleDateFormat("yyyyMMddHHmmss")
+//			val date = dateFormat.parse(body.standardTime.asHex)
+			with(DataUtils.noSpaceHexStr(DataUtils.bytesToHexStr(
+					*body.standardTime.bytes.reversedArray()
+			))) {
+				MsdStandardTimeData().apply {
+					this.address = meterAddress
+					year = substring(0, 4).toInt()
+					month = substring(4, 6).toInt()
+					day = substring(6, 8).toInt()
+					hour = substring(8, 10).toInt()
+					minute = substring(10, 12).toInt()
+					second = substring(12, 14).toInt()
+				}
+			}
+		} else {
+			throw IOException("收不到串口数据。")
+		}
+	}
+
+	fun writeStandardTime(msdStandardTimeData: MsdStandardTimeData) {
+		val address = checkAndReverseAddress(msdStandardTimeData.address)
+		with(msdStandardTimeData) {
+			if (year !in 1900..2099) {
+				throw BadRequestException("年份必须是：1900--2099。")
+			}
+			if (month !in 1..12) {
+				throw BadRequestException("月份必须是：1--12。")
+			}
+			if (day !in 1..31) {
+				throw BadRequestException("日必须是：1--31。")
+			}
+			if (hour !in 0..23) {
+				throw BadRequestException("小时必须是：0--23。")
+			}
+			if (minute !in 0..59) {
+				throw BadRequestException("分钟必须是：0--59。")
+			}
+			if (second !in 0..59) {
+				throw BadRequestException("秒必须是：0--59。")
+			}
+		}
+		val dateString = with(msdStandardTimeData) {
+			String.format("%04d%02d%02d%02d%02d%02d", year, month, day, hour, minute, second)
+		}
+		val standardTimeData = StandardTimeData(Bcd70().apply {
+			asHex = dateString
+			DataUtils.reverseArrayContent(bytes)
+		})
+
+		val meterData = MeterData()
+		meterData.body = standardTimeData
+		meterData.head.dataId.asHex = MeterDataType.STANDARD_TIME_DATA.tag
+		meterData.head.seq = generateNextSeq()
+		val bs = ByteArrayOutputStream()
+		bs wr meterData
+		val meterPacket = MeterPacket(0x20, HexData7().apply {
+			asHex = address
+		}, 0x04, bs.toByteArray())
+
+		val resultList = SerialPortMan.sendAndReceive(meterPacket)
+		if (resultList.isNotEmpty()) {
+			val (meterAddress, ctrlCode, recMeterData) = resultList[0]
+			println("写标准时间，收到回应，meterAddress=$meterAddress")
+			if (ctrlCode and 0x40 != 0.toByte()) {
+				throw IOException("通讯异常，收到控制码为：$ctrlCode")
+			}
+			val (head, _) = recMeterData
+			if (head.dataTag != MeterDataType.STANDARD_TIME_DATA.tag) {
+				throw IOException("串口收到错误的数据。")
 			}
 		} else {
 			throw IOException("收不到串口数据。")

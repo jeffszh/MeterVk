@@ -1,9 +1,6 @@
 package com.amware.meterkit.service;
 
-import com.amware.meterkit.entity.MsdCurrentCumulativeData;
-import com.amware.meterkit.entity.MsdDebuggingUiData;
-import com.amware.meterkit.entity.MsdFlowData;
-import com.amware.meterkit.entity.MsdPreciseFlowData;
+import com.amware.meterkit.entity.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -38,6 +35,7 @@ public class MeterService {
 	private static final String DEBUGGING_UI_DATA = "/debugging-ui-data";
 	private static final String CURRENT_CUMULATIVE_DATA = "/current-cumulative-data";
 	private static final String START_TESTING = "/start-testing";
+	private static final String STANDARD_TIME = "/standard-time";
 
 	@Autowired
 	public MeterService(MeterServiceKt serviceKt) {
@@ -104,6 +102,29 @@ public class MeterService {
 	@RequestEntry(value = SERVICE_ENTRY + START_TESTING, method = RequestMethod.POST)
 	public void startTesting(@RequestParam(required = false) String address) {
 		serviceKt.startTesting(address);
+	}
+
+	/**
+	 * 读标准时间
+	 *
+	 * @param address 水表地址，若缺席表示广播。
+	 * @return 标准时间数据
+	 */
+	@GetMapping(STANDARD_TIME)
+	@RequestEntry(value = SERVICE_ENTRY + STANDARD_TIME, method = RequestMethod.GET)
+	public MsdStandardTimeData readStandardTime(@RequestParam(required = false) String address) {
+		return serviceKt.readStandardTime(address);
+	}
+
+	/**
+	 * 写标准时间
+	 *
+	 * @param standardTimeData 标准时间数据
+	 */
+	@PostMapping(STANDARD_TIME)
+	@RequestEntry(value = SERVICE_ENTRY + STANDARD_TIME, method = RequestMethod.POST)
+	public void writeStandardTime(@RequestBody MsdStandardTimeData standardTimeData) {
+		serviceKt.writeStandardTime(standardTimeData);
 	}
 
 }
