@@ -36,6 +36,7 @@ public class MeterService {
 	private static final String CURRENT_CUMULATIVE_DATA = "/current-cumulative-data";
 	private static final String START_TESTING = "/start-testing";
 	private static final String STANDARD_TIME = "/standard-time";
+	private static final String METER_NUM_ADDRESS = "/meter-num-address";
 
 	@Autowired
 	public MeterService(MeterServiceKt serviceKt) {
@@ -125,6 +126,29 @@ public class MeterService {
 	@RequestEntry(value = SERVICE_ENTRY + STANDARD_TIME, method = RequestMethod.POST)
 	public void writeStandardTime(@RequestBody MsdStandardTimeData standardTimeData) {
 		serviceKt.writeStandardTime(standardTimeData);
+	}
+
+	/**
+	 * 读取表号地址（只包括可写入的后4个字节）
+	 *
+	 * @param address 水表地址，若缺席表示广播。
+	 * @return 表号地址数据
+	 */
+	@GetMapping(METER_NUM_ADDRESS)
+	@RequestEntry(value = SERVICE_ENTRY + METER_NUM_ADDRESS, method = RequestMethod.GET)
+	public MsdMeterNumAddressData readMeterNumAddress(@RequestParam(required = false) String address) {
+		return serviceKt.readMeterNumAddress(address);
+	}
+
+	/**
+	 * 设置表号地址
+	 *
+	 * @param meterNumAddressData 表号地址数据
+	 */
+	@PostMapping(METER_NUM_ADDRESS)
+	@RequestEntry(value = SERVICE_ENTRY + METER_NUM_ADDRESS, method = RequestMethod.POST)
+	public void writeMeterNumAddress(@RequestBody MsdMeterNumAddressData meterNumAddressData) {
+		serviceKt.writeMeterNumAddress(meterNumAddressData);
 	}
 
 }

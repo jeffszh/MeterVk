@@ -1,0 +1,11 @@
+POST http://localhost:7406/meter-service/meter-num-address
+Content-Type: application/json;charset=UTF-8
+Accept: application/json
+Cache-Control: no-cache
+
+{
+	"newAddress": "12 34 56 78"
+}
+
+###
+

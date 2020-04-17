@@ -243,7 +243,7 @@ class MeterServiceKt {
 		val resultList = SerialPortMan.sendAndReceive(meterPacket)
 		if (resultList.isNotEmpty()) {
 			val (meterAddress, ctrlCode, meterData) = resultList[0]
-			println("启动检定回应包，地址=$meterAddress，" +
+			println("启动检定回应包，地址=${reverseAddress(meterAddress)}，" +
 					"控制码=${String.format("0x%02X", ctrlCode.toInt() and 0xFF)}")
 			if (ctrlCode and 0x40 != 0.toByte()) {
 				throw IOException("通讯异常，收到控制码为：$ctrlCode")
@@ -282,7 +282,7 @@ class MeterServiceKt {
 					*body.standardTime.bytes.reversedArray()
 			))) {
 				MsdStandardTimeData().apply {
-					this.address = meterAddress
+					this.address = reverseAddress(meterAddress)
 					year = substring(0, 4).toInt()
 					month = substring(4, 6).toInt()
 					day = substring(6, 8).toInt()
@@ -339,12 +339,88 @@ class MeterServiceKt {
 		val resultList = SerialPortMan.sendAndReceive(meterPacket)
 		if (resultList.isNotEmpty()) {
 			val (meterAddress, ctrlCode, recMeterData) = resultList[0]
-			println("写标准时间，收到回应，meterAddress=$meterAddress")
+			println("写标准时间，收到回应，meterAddress=${reverseAddress(meterAddress)}")
 			if (ctrlCode and 0x40 != 0.toByte()) {
 				throw IOException("通讯异常，收到控制码为：$ctrlCode")
 			}
 			val (head, _) = recMeterData
 			if (head.dataTag != MeterDataType.STANDARD_TIME_DATA.tag) {
+				throw IOException("串口收到错误的数据。")
+			}
+		} else {
+			throw IOException("收不到串口数据。")
+		}
+	}
+
+	fun readMeterNumAddress(nullableAddress: String?): MsdMeterNumAddressData {
+		val address = checkAndReverseAddress(nullableAddress)
+		val meterPacket = MeterPacketBuilder.buildReadNormalDataPacket(
+				address, MeterDataType.METER_NUM_ADDRESS_DATA)
+		meterPacket.instrumentType = 0x20
+		meterPacket.ctrlCode = 0x01
+
+		val resultList = SerialPortMan.sendAndReceive(meterPacket)
+		return if (resultList.isNotEmpty()) {
+			val (meterAddress, ctrlCode, recMeterData) = resultList[0]
+//			if (ctrlCode and 0x40 != 0.toByte()) {
+//				throw IOException("通讯异常，收到控制码为：$ctrlCode")
+//			}
+			val (head, body) = recMeterData
+
+			// 注：实际上A018修改表号地址，水表并没有提供读的功能，所以是自己拼凑数据给外面一个读的功能。
+			println("读表号地址，返回的控制码=${String.format("0x%02X", ctrlCode.toInt() and 0xFF)}，body=$body")
+
+			if (head.dataTag != MeterDataType.METER_NUM_ADDRESS_DATA.tag /*||
+					body !is MeterNumAddressData*/) {
+				throw IOException("串口收到错误的数据。")
+			}
+			MsdMeterNumAddressData().apply {
+				this.address = reverseAddress(meterAddress)
+				newAddress = this.address.substring(9)    // 拼凑一个地址，权作为给外面一个读的结果。
+			}
+		} else {
+			throw IOException("收不到串口数据。")
+		}
+	}
+
+	fun writeMeterNumAddress(msdMeterNumAddressData: MsdMeterNumAddressData) {
+		if (msdMeterNumAddressData.newAddress == null) {
+			throw BadRequestException("newAddress不能为空！")
+		}
+		val address = checkAndReverseAddress(msdMeterNumAddressData.address)
+		val newAddress = msdMeterNumAddressData.newAddress.trim()
+		println("newAddress=$newAddress")
+		if (!Regex("([0-9]{2} +)*").matches("$newAddress ")) {
+			throw BadRequestException("$newAddress 不是合法的BCD字符串。")
+		}
+		val addrBytes = DataUtils.hexStrToBytes(newAddress)
+		if (addrBytes.size != 4) {
+			throw BadRequestException("输入错误：$newAddress，必须输入4个字节的BCD码。")
+		}
+		val meterNumAddressData = MeterNumAddressData(HexData7().apply {
+			asHex = "$addressPrefix $newAddress"
+			DataUtils.reverseArrayContent(bytes)
+		})
+
+		val meterData = MeterData()
+		meterData.body = meterNumAddressData
+		meterData.head.dataId.asHex = MeterDataType.METER_NUM_ADDRESS_DATA.tag
+		meterData.head.seq = generateNextSeq()
+		val bs = ByteArrayOutputStream()
+		bs wr meterData
+		val meterPacket = MeterPacket(0x20, HexData7().apply {
+			asHex = address
+		}, 0x39, bs.toByteArray())
+
+		val resultList = SerialPortMan.sendAndReceive(meterPacket)
+		if (resultList.isNotEmpty()) {
+			val (meterAddress, ctrlCode, recMeterData) = resultList[0]
+			println("修改表号地址，收到回应，meterAddress=${reverseAddress(meterAddress)}")
+			if (ctrlCode and 0x40 != 0.toByte()) {
+				throw IOException("通讯异常，收到控制码为：$ctrlCode")
+			}
+			val (head, _) = recMeterData
+			if (head.dataTag != MeterDataType.METER_NUM_ADDRESS_DATA.tag) {
 				throw IOException("串口收到错误的数据。")
 			}
 		} else {
