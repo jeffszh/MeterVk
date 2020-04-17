@@ -4,6 +4,7 @@ import cn.amware.mbus.data.MeterData
 import cn.amware.mbus.data.MeterPacket
 import cn.amware.mbus.data.rd
 import cn.amware.mbus.data.wr
+import cn.amware.utils.DataUtils
 import com.amware.meterkit.entity.SerialPortInfo
 import com.amware.meterkit.service.BadRequestException
 import gnu.io.CommPortIdentifier
@@ -18,6 +19,8 @@ import java.util.concurrent.Semaphore
 import java.util.concurrent.TimeUnit
 
 object SerialPortMan {
+
+	private var showDebug = true
 
 	private var serialPort: SerialPort? = null
 	private val commPortIdentifierMap = sortedMapOf<String, CommPortIdentifier>()
@@ -173,6 +176,10 @@ object SerialPortMan {
 		// 清除掉可能存在的上次通讯的残余
 		clearResidua()
 
+		if (showDebug) {
+			println("串口发送：${DataUtils.bytesToHexStr(*data)}")
+		}
+
 		serialPort.outputStream.use { outputStream ->
 			repeat(6) {
 				outputStream.write(0xFE)
@@ -205,7 +212,11 @@ object SerialPortMan {
 			if (parityErrorSignal.tryAcquire()) {
 				throw IOException("串口奇偶校验错！")
 			}
-			return resultStream.toByteArray()
+			val result = resultStream.toByteArray()
+			if (showDebug) {
+				println("串口接收：${DataUtils.bytesToHexStr(*result)}")
+			}
+			return result
 		}
 	}
 
