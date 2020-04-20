@@ -37,6 +37,13 @@ public class MeterService {
 	private static final String START_TESTING = "/start-testing";
 	private static final String STANDARD_TIME = "/standard-time";
 	private static final String METER_NUM_ADDRESS = "/meter-num-address";
+	private static final String FACTORY_DATE = "/factory-date";
+
+	@SuppressWarnings("unused")
+	private static final Object SUCCESS = new Object() {
+		public int status = 200;
+		public String message = "success";
+	};
 
 	@Autowired
 	public MeterService(MeterServiceKt serviceKt) {
@@ -86,23 +93,27 @@ public class MeterService {
 	 * 写当前数据
 	 *
 	 * @param currentCumulativeData 当前累计数据
+	 * @return 若成功，返回SUCCESS
 	 */
 	@PostMapping(CURRENT_CUMULATIVE_DATA)
 	@RequestEntry(value = SERVICE_ENTRY + CURRENT_CUMULATIVE_DATA, method = RequestMethod.POST)
-	public void writeCurrentCumulativeData(
+	public Object writeCurrentCumulativeData(
 			@RequestBody MsdCurrentCumulativeData currentCumulativeData) {
 		serviceKt.writeCurrentCumulativeData(currentCumulativeData);
+		return SUCCESS;
 	}
 
 	/**
 	 * 启动检定
 	 *
 	 * @param address 水表地址，若缺席表示广播。
+	 * @return 若成功，返回SUCCESS
 	 */
 	@PostMapping(START_TESTING)
 	@RequestEntry(value = SERVICE_ENTRY + START_TESTING, method = RequestMethod.POST)
-	public void startTesting(@RequestParam(required = false) String address) {
+	public Object startTesting(@RequestParam(required = false) String address) {
 		serviceKt.startTesting(address);
+		return SUCCESS;
 	}
 
 	/**
@@ -121,11 +132,13 @@ public class MeterService {
 	 * 写标准时间
 	 *
 	 * @param standardTimeData 标准时间数据
+	 * @return 若成功，返回SUCCESS
 	 */
 	@PostMapping(STANDARD_TIME)
 	@RequestEntry(value = SERVICE_ENTRY + STANDARD_TIME, method = RequestMethod.POST)
-	public void writeStandardTime(@RequestBody MsdStandardTimeData standardTimeData) {
+	public Object writeStandardTime(@RequestBody MsdStandardTimeData standardTimeData) {
 		serviceKt.writeStandardTime(standardTimeData);
+		return SUCCESS;
 	}
 
 	/**
@@ -144,11 +157,38 @@ public class MeterService {
 	 * 设置表号地址
 	 *
 	 * @param meterNumAddressData 表号地址数据
+	 * @return 若成功，返回SUCCESS
 	 */
 	@PostMapping(METER_NUM_ADDRESS)
 	@RequestEntry(value = SERVICE_ENTRY + METER_NUM_ADDRESS, method = RequestMethod.POST)
-	public void writeMeterNumAddress(@RequestBody MsdMeterNumAddressData meterNumAddressData) {
+	public Object writeMeterNumAddress(@RequestBody MsdMeterNumAddressData meterNumAddressData) {
 		serviceKt.writeMeterNumAddress(meterNumAddressData);
+		return SUCCESS;
+	}
+
+	/**
+	 * 读出厂日期
+	 *
+	 * @param address 水表地址，若缺席表示广播。
+	 * @return 出厂日期数据
+	 */
+	@GetMapping(FACTORY_DATE)
+	@RequestEntry(value = SERVICE_ENTRY + FACTORY_DATE, method = RequestMethod.GET)
+	public MsdFactoryDateData readFactoryDate(@RequestParam(required = false) String address) {
+		return serviceKt.readFactoryDate(address);
+	}
+
+	/**
+	 * 写出厂日期
+	 *
+	 * @param factoryDateData 出厂日期数据
+	 * @return 若成功，返回SUCCESS
+	 */
+	@PostMapping(FACTORY_DATE)
+	@RequestEntry(value = SERVICE_ENTRY + FACTORY_DATE, method = RequestMethod.POST)
+	public Object writeFactoryDate(@RequestBody MsdFactoryDateData factoryDateData) {
+		serviceKt.writeFactoryDate(factoryDateData);
+		return SUCCESS;
 	}
 
 }

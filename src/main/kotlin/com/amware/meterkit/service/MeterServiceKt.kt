@@ -84,6 +84,42 @@ class MeterServiceKt {
 					)
 			)
 
+	fun checkAndGetResult(
+			resultList: List<Triple<String, Byte, MeterData>>,
+			dataTag: String): Pair<String, MeterDataBody?> {
+		if (resultList.isEmpty()) {
+			throw IOException("收不到串口数据。")
+		}
+		val exceptionList = mutableListOf<IOException>()
+		resultList.forEachIndexed { i, (meterAddress, ctrlCode, meterData) ->
+			if (ctrlCode and 0x40 != 0.toByte()) {
+				exceptionList.add(IOException("通讯异常，收到控制码为：$ctrlCode"))
+			} else {
+				val (head, body) = meterData
+				if (head.dataTag == dataTag) {
+					println("很好，第 $i 个结果类型匹配。")
+					return meterAddress to body
+				}
+			}
+		}
+		if (exceptionList.isNotEmpty()) {
+			throw exceptionList[0]
+		}
+		throw IOException("串口收到错误的数据。")
+	}
+
+	fun <T : MeterDataBody> checkAndGetTypedResult(
+			resultList: List<Triple<String, Byte, MeterData>>,
+			dataTag: String,
+			bodyClass: Class<T>): Pair<String, T> {
+		val (meterAddress, body) = checkAndGetResult(resultList, dataTag)
+		if (bodyClass.isInstance(body)) {
+			return meterAddress to bodyClass.cast(body)
+		} else {
+			throw IOException("串口收到错误的数据类型。")
+		}
+	}
+
 	fun getFlowData(nullableAddress: String?): MsdFlowData {
 		val address = checkAndReverseAddress(nullableAddress)
 		val meterPacket = MeterPacketBuilder.buildReadNormalDataPacket(
@@ -91,27 +127,20 @@ class MeterServiceKt {
 		meterPacket.ctrlCode = 0x01
 
 		val resultList = SerialPortMan.sendAndReceive(meterPacket)
-		return if (resultList.isNotEmpty()) {
-			val (meterAddress, _, meterData) = resultList[0]
-			val (head, body) = meterData
-			if (head.dataTag != MeterDataType.FLOW_DATA.tag ||
-					body !is FlowData) {
-				throw IOException("收到错误的数据。")
-			}
-			with(body) {
-				MsdFlowData(
-						reverseAddress(meterAddress),
-						sumOfFlow.asString.toDoubleOrNull() ?: Double.NaN,
-						unit1.value.text,
-						negSumOfFlow.asString.toDoubleOrNull() ?: Double.NaN,
-						unit2.value.text,
-						realTimeClock.toString(),
-						bitField.bytes[0],
-						reserved.bytes[0]
-				)
-			}
-		} else {
-			throw IOException("收不到串口数据。")
+		val (meterAddress, body) = checkAndGetTypedResult(resultList,
+				MeterDataType.FLOW_DATA.tag, FlowData::class.java
+		)
+		return with(body) {
+			MsdFlowData(
+					reverseAddress(meterAddress),
+					sumOfFlow.asString.toDoubleOrNull() ?: Double.NaN,
+					unit1.value.text,
+					negSumOfFlow.asString.toDoubleOrNull() ?: Double.NaN,
+					unit2.value.text,
+					realTimeClock.toString(),
+					bitField.bytes[0],
+					reserved.bytes[0]
+			)
 		}
 	}
 
@@ -122,30 +151,22 @@ class MeterServiceKt {
 		meterPacket.ctrlCode = 0x01
 
 		val resultList = SerialPortMan.sendAndReceive(meterPacket)
-		return if (resultList.isNotEmpty()) {
-			val (meterAddress, _, meterData) = resultList[0]
-			val (head, body) = meterData
-			if (head.dataTag != MeterDataType.PRECISE_FLOW_DATA.tag ||
-					body !is PreciseFlowData) {
-				throw IOException("收到错误的数据。")
-			}
-			with(body) {
-				MsdPreciseFlowData(
-						reverseAddress(meterAddress),
-						sumOfCooling.asString.toDoubleOrNull() ?: Double.NaN,
-						unit1.text,
-						sumOfHeat.asString.toDoubleOrNull() ?: Double.NaN,
-						unit2.text,
-						instantPower.asString.toDoubleOrNull() ?: Double.NaN,
-						unit3.text,
-						instantFlow.asString.toDoubleOrNull() ?: Double.NaN,
-						unit4.text,
-						sumOfFlow.asString.toDoubleOrNull() ?: Double.NaN,
-						unit5.text
-				)
-			}
-		} else {
-			throw IOException("收不到串口数据。")
+		val (meterAddress, body) = checkAndGetTypedResult(resultList,
+				MeterDataType.PRECISE_FLOW_DATA.tag, PreciseFlowData::class.java)
+		return with(body) {
+			MsdPreciseFlowData(
+					reverseAddress(meterAddress),
+					sumOfCooling.asString.toDoubleOrNull() ?: Double.NaN,
+					unit1.text,
+					sumOfHeat.asString.toDoubleOrNull() ?: Double.NaN,
+					unit2.text,
+					instantPower.asString.toDoubleOrNull() ?: Double.NaN,
+					unit3.text,
+					instantFlow.asString.toDoubleOrNull() ?: Double.NaN,
+					unit4.text,
+					sumOfFlow.asString.toDoubleOrNull() ?: Double.NaN,
+					unit5.text
+			)
 		}
 	}
 
@@ -156,34 +177,26 @@ class MeterServiceKt {
 		meterPacket.ctrlCode = 0x01
 
 		val resultList = SerialPortMan.sendAndReceive(meterPacket)
-		return if (resultList.isNotEmpty()) {
-			val (meterAddress, _, meterData) = resultList[0]
-			val (head, body) = meterData
-			if (head.dataTag != MeterDataType.DEBUGGING_UI_DATA.tag ||
-					body !is DebuggingUiData) {
-				throw IOException("收到错误的数据。")
-			}
-			with(body) {
-				MsdDebuggingUiData(
-						reverseAddress(meterAddress),
-						programVersion.value.toInt(),
-						supplyReturnFlag.bytes[0] > 0,
-						instrumentFactor.asString.toDoubleOrNull() ?: Double.NaN,
-						lowFlowExcision.asString.toDoubleOrNull() ?: Double.NaN,
-						flowCompensation1.asString.toDoubleOrNull() ?: Double.NaN,
-						flowCompensation2.asString.toDoubleOrNull() ?: Double.NaN,
-						flowCompensation3.asString.toDoubleOrNull() ?: Double.NaN,
-						flowCompensation4.asString.toDoubleOrNull() ?: Double.NaN,
-						supplyingTemperatureCompensation.asString
-								.toDoubleOrNull() ?: Double.NaN,
-						returningTemperatureCompensation.asString
-								.toDoubleOrNull() ?: Double.NaN,
-						introductionDate.asString,
-						caliber.asString.toDoubleOrNull() ?: Double.NaN
-				)
-			}
-		} else {
-			throw IOException("收不到串口数据。")
+		val (meterAddress, body) = checkAndGetTypedResult(resultList,
+				MeterDataType.DEBUGGING_UI_DATA.tag, DebuggingUiData::class.java)
+		return with(body) {
+			MsdDebuggingUiData(
+					reverseAddress(meterAddress),
+					programVersion.value.toInt(),
+					supplyReturnFlag.bytes[0] > 0,
+					instrumentFactor.asString.toDoubleOrNull() ?: Double.NaN,
+					lowFlowExcision.asString.toDoubleOrNull() ?: Double.NaN,
+					flowCompensation1.asString.toDoubleOrNull() ?: Double.NaN,
+					flowCompensation2.asString.toDoubleOrNull() ?: Double.NaN,
+					flowCompensation3.asString.toDoubleOrNull() ?: Double.NaN,
+					flowCompensation4.asString.toDoubleOrNull() ?: Double.NaN,
+					supplyingTemperatureCompensation.asString
+							.toDoubleOrNull() ?: Double.NaN,
+					returningTemperatureCompensation.asString
+							.toDoubleOrNull() ?: Double.NaN,
+					introductionDate.asString,
+					caliber.asString.toDoubleOrNull() ?: Double.NaN
+			)
 		}
 	}
 
@@ -223,15 +236,7 @@ class MeterServiceKt {
 		println(meterPacket)
 
 		val resultList = SerialPortMan.sendAndReceive(meterPacket)
-		if (resultList.isNotEmpty()) {
-			val (_, _, recMeterData) = resultList[0]
-			val (head, _) = recMeterData
-			if (head.dataTag != MeterDataType.CURRENT_CUMULATIVE_DATA.tag) {
-				throw IOException("收到错误的数据。")
-			}
-		} else {
-			throw IOException("收不到串口数据。")
-		}
+		checkAndGetResult(resultList, MeterDataType.CURRENT_CUMULATIVE_DATA.tag)
 	}
 
 	fun startTesting(nullableAddress: String?) {
@@ -241,21 +246,7 @@ class MeterServiceKt {
 		meterPacket.ctrlCode = 0x04
 
 		val resultList = SerialPortMan.sendAndReceive(meterPacket)
-		if (resultList.isNotEmpty()) {
-			val (meterAddress, ctrlCode, meterData) = resultList[0]
-			println("启动检定回应包，地址=${reverseAddress(meterAddress)}，" +
-					"控制码=${String.format("0x%02X", ctrlCode.toInt() and 0xFF)}")
-			if (ctrlCode and 0x40 != 0.toByte()) {
-				throw IOException("通讯异常，收到控制码为：$ctrlCode")
-			}
-			val (head, _) = meterData
-			println("dataTag=${head.dataTag}")
-			if (head.dataTag != START_TESTING_DATA_TAG) {
-				throw IOException("收到错误的数据。")
-			}
-		} else {
-			throw IOException("收不到串口数据。")
-		}
+		checkAndGetResult(resultList, START_TESTING_DATA_TAG)
 	}
 
 	fun readStandardTime(nullableAddress: String?): MsdStandardTimeData {
@@ -266,33 +257,22 @@ class MeterServiceKt {
 		meterPacket.ctrlCode = 0x01
 
 		val resultList = SerialPortMan.sendAndReceive(meterPacket)
-		return if (resultList.isNotEmpty()) {
-			val (meterAddress, ctrlCode, meterData) = resultList[0]
-			if (ctrlCode and 0x40 != 0.toByte()) {
-				throw IOException("通讯异常，收到控制码为：$ctrlCode")
-			}
-			val (head, body) = meterData
-			if (head.dataTag != MeterDataType.STANDARD_TIME_DATA.tag ||
-					body !is StandardTimeData) {
-				throw IOException("串口收到错误的数据。")
-			}
+		val (meterAddress, body) = checkAndGetTypedResult(resultList,
+				MeterDataType.STANDARD_TIME_DATA.tag, StandardTimeData::class.java)
 //			val dateFormat = SimpleDateFormat("yyyyMMddHHmmss")
 //			val date = dateFormat.parse(body.standardTime.asHex)
-			with(DataUtils.noSpaceHexStr(DataUtils.bytesToHexStr(
-					*body.standardTime.bytes.reversedArray()
-			))) {
-				MsdStandardTimeData().apply {
-					this.address = reverseAddress(meterAddress)
-					year = substring(0, 4).toInt()
-					month = substring(4, 6).toInt()
-					day = substring(6, 8).toInt()
-					hour = substring(8, 10).toInt()
-					minute = substring(10, 12).toInt()
-					second = substring(12, 14).toInt()
-				}
+		return with(DataUtils.noSpaceHexStr(DataUtils.bytesToHexStr(
+				*body.standardTime.bytes.reversedArray()
+		))) {
+			MsdStandardTimeData().apply {
+				this.address = reverseAddress(meterAddress)
+				year = substring(0, 4).toInt()
+				month = substring(4, 6).toInt()
+				day = substring(6, 8).toInt()
+				hour = substring(8, 10).toInt()
+				minute = substring(10, 12).toInt()
+				second = substring(12, 14).toInt()
 			}
-		} else {
-			throw IOException("收不到串口数据。")
 		}
 	}
 
@@ -337,19 +317,7 @@ class MeterServiceKt {
 		}, 0x04, bs.toByteArray())
 
 		val resultList = SerialPortMan.sendAndReceive(meterPacket)
-		if (resultList.isNotEmpty()) {
-			val (meterAddress, ctrlCode, recMeterData) = resultList[0]
-			println("写标准时间，收到回应，meterAddress=${reverseAddress(meterAddress)}")
-			if (ctrlCode and 0x40 != 0.toByte()) {
-				throw IOException("通讯异常，收到控制码为：$ctrlCode")
-			}
-			val (head, _) = recMeterData
-			if (head.dataTag != MeterDataType.STANDARD_TIME_DATA.tag) {
-				throw IOException("串口收到错误的数据。")
-			}
-		} else {
-			throw IOException("收不到串口数据。")
-		}
+		checkAndGetResult(resultList, MeterDataType.STANDARD_TIME_DATA.tag)
 	}
 
 	fun readMeterNumAddress(nullableAddress: String?): MsdMeterNumAddressData {
@@ -413,19 +381,64 @@ class MeterServiceKt {
 		}, 0x39, bs.toByteArray())
 
 		val resultList = SerialPortMan.sendAndReceive(meterPacket)
-		if (resultList.isNotEmpty()) {
-			val (meterAddress, ctrlCode, recMeterData) = resultList[0]
-			println("修改表号地址，收到回应，meterAddress=${reverseAddress(meterAddress)}")
-			if (ctrlCode and 0x40 != 0.toByte()) {
-				throw IOException("通讯异常，收到控制码为：$ctrlCode")
+		checkAndGetResult(resultList, MeterDataType.METER_NUM_ADDRESS_DATA.tag)
+	}
+
+	fun readFactoryDate(nullableAddress: String?): MsdFactoryDateData {
+		val address = checkAndReverseAddress(nullableAddress)
+		val meterPacket = MeterPacketBuilder.buildReadNormalDataPacket(
+				address, MeterDataType.FACTORY_DATE_DATA)
+		meterPacket.instrumentType = 0x20
+		meterPacket.ctrlCode = 0x01
+
+		val resultList = SerialPortMan.sendAndReceive(meterPacket)
+		val (meterAddress, body) = checkAndGetTypedResult(resultList,
+				MeterDataType.FACTORY_DATE_DATA.tag, FactoryDateData::class.java)
+		return with(DataUtils.noSpaceHexStr(DataUtils.bytesToHexStr(
+				*body.factoryDate.bytes.reversedArray()
+		))) {
+			MsdFactoryDateData().apply {
+				this.address = reverseAddress(meterAddress)
+				year = substring(0, 4).toInt()
+				month = substring(4, 6).toInt()
+				day = substring(6, 8).toInt()
 			}
-			val (head, _) = recMeterData
-			if (head.dataTag != MeterDataType.METER_NUM_ADDRESS_DATA.tag) {
-				throw IOException("串口收到错误的数据。")
-			}
-		} else {
-			throw IOException("收不到串口数据。")
 		}
+	}
+
+	fun writeFactoryDate(msdFactoryDateData: MsdFactoryDateData) {
+		val address = checkAndReverseAddress(msdFactoryDateData.address)
+		with(msdFactoryDateData) {
+			if (year !in 1900..2099) {
+				throw BadRequestException("年份必须是：1900--2099。")
+			}
+			if (month !in 1..12) {
+				throw BadRequestException("月份必须是：1--12。")
+			}
+			if (day !in 1..31) {
+				throw BadRequestException("日必须是：1--31。")
+			}
+		}
+		val dateString = with(msdFactoryDateData) {
+			String.format("%04d%02d%02d", year, month, day)
+		}
+		val factoryDateData = FactoryDateData(Bcd40().apply {
+			asHex = dateString
+			DataUtils.reverseArrayContent(bytes)
+		})
+
+		val meterData = MeterData()
+		meterData.body = factoryDateData
+		meterData.head.dataId.asHex = MeterDataType.FACTORY_DATE_DATA.tag
+		meterData.head.seq = generateNextSeq()
+		val bs = ByteArrayOutputStream()
+		bs wr meterData
+		val meterPacket = MeterPacket(0x20, HexData7().apply {
+			asHex = address
+		}, 0x04, bs.toByteArray())
+
+		val resultList = SerialPortMan.sendAndReceive(meterPacket)
+		checkAndGetResult(resultList, MeterDataType.FACTORY_DATE_DATA.tag)
 	}
 
 }

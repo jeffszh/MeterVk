@@ -1,4 +1,4 @@
-GET http://localhost:7406/meter-service/precise-flow-data?address=12 34 56 78
+GET http://localhost:7406/meter-service/factory-date
 Content-Type: application/json;charset=UTF-8
 Accept: application/json
 Cache-Control: no-cache
