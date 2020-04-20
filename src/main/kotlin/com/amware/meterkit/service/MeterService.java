@@ -38,6 +38,7 @@ public class MeterService {
 	private static final String STANDARD_TIME = "/standard-time";
 	private static final String METER_NUM_ADDRESS = "/meter-num-address";
 	private static final String FACTORY_DATE = "/factory-date";
+	private static final String WORK_MODE = "/work-mode";
 
 	@SuppressWarnings("unused")
 	private static final Object SUCCESS = new Object() {
@@ -189,6 +190,24 @@ public class MeterService {
 	public Object writeFactoryDate(@RequestBody MsdFactoryDateData factoryDateData) {
 		serviceKt.writeFactoryDate(factoryDateData);
 		return SUCCESS;
+	}
+
+	/**
+	 * <h1>转换运行模式</h1>
+	 * 水表有两种运行模式：正常运行模式和工厂模式，此功能用于切换这两种模式。<br>
+	 * 在工厂模式下，才能执行诸如“设置表号地址”、“写当前累计数据”等操作，在正常运行模式下，一般只能执行读操作。
+	 * 在进行模式切换后，水表硬件会重启，并停止响应一段时间，大约几秒到十几秒，视乎具体的水表硬件，
+	 * 因此切换模式后，必须稍等才能再执行别的操作。<br>
+	 * 另外，此功能为只写操作，就是说无法通过API不改变运行模式而获知当前运行模式。
+	 * 不过，在水表本身的显示面板上，可以看到当前处于什么模式。
+	 *
+	 * @param workModeData 运行模式数据
+	 * @return 当前运行模式
+	 */
+	@PostMapping(WORK_MODE)
+	@RequestEntry(value = SERVICE_ENTRY + WORK_MODE, method = RequestMethod.POST)
+	public MsdWorkModeData changeWorkMode(@RequestBody MsdWorkModeData workModeData) {
+		return serviceKt.changeWorkMode(workModeData);
 	}
 
 }

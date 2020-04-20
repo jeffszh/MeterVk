@@ -1,0 +1,12 @@
+POST http://localhost:7406/meter-service/work-mode
+Content-Type: application/json;charset=UTF-8
+Accept: application/json
+Cache-Control: no-cache
+
+{
+	"address": 12345678,
+	"factoryMode": true
+}
+
+###
+

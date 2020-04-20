@@ -93,7 +93,8 @@ class MeterServiceKt {
 		val exceptionList = mutableListOf<IOException>()
 		resultList.forEachIndexed { i, (meterAddress, ctrlCode, meterData) ->
 			if (ctrlCode and 0x40 != 0.toByte()) {
-				exceptionList.add(IOException("通讯异常，收到控制码为：$ctrlCode"))
+				exceptionList.add(IOException("通讯异常，收到控制码为：${String.format("0x%02X",
+						ctrlCode.toInt() and 0xFF)}"))
 			} else {
 				val (head, body) = meterData
 				if (head.dataTag == dataTag) {
@@ -439,6 +440,39 @@ class MeterServiceKt {
 
 		val resultList = SerialPortMan.sendAndReceive(meterPacket)
 		checkAndGetResult(resultList, MeterDataType.FACTORY_DATE_DATA.tag)
+	}
+
+	fun changeWorkMode(msdWorkModeData: MsdWorkModeData): MsdWorkModeData {
+		// 因为此操作不会得到硬件响应，所以先读取一下水表地址，确保水表是在线。
+		val meterNumAddressData = readMeterNumAddress(msdWorkModeData.address)
+
+		val address = checkAndReverseAddress(msdWorkModeData.address)
+		val workModeData = WorkModeData(
+				if (msdWorkModeData.factoryMode) {
+					WorkModeData.WorkMode.IN_FACTORY_MODE
+				} else {
+					WorkModeData.WorkMode.OUT_FACTORY_MODE
+				}
+		)
+
+		val meterData = MeterData()
+		meterData.body = workModeData
+		meterData.head.dataId.asHex = MeterDataType.WORK_MODE_DATA.tag
+		meterData.head.seq = generateNextSeq()
+		val bs = ByteArrayOutputStream()
+		bs wr meterData
+		val meterPacket = MeterPacket(0x20, HexData7().apply {
+			asHex = address
+		}, 0x52, bs.toByteArray())
+
+		try {
+			SerialPortMan.sendAndReceive(meterPacket)    // 注：此操作不会收到水表的应答
+		} catch (e: IOException) {
+			e.printStackTrace()
+		}
+		return msdWorkModeData.apply {
+			this.address = meterNumAddressData.address
+		}
 	}
 
 }
