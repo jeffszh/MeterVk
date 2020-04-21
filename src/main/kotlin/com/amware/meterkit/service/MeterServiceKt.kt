@@ -516,4 +516,96 @@ class MeterServiceKt {
 		checkAndGetResult(resultList, MeterDataType.FLOW_CORRECTION_DATA.tag)
 	}
 
+	fun readMeterParams(nullableAddress: String?): MsdMeterParams {
+		val address = checkAndReverseAddress(nullableAddress)
+		val meterPacket = MeterPacketBuilder.buildReadNormalDataPacket(
+				address, MeterDataType.METER_PARAM)
+
+		val resultList = SerialPortMan.sendAndReceive(meterPacket)
+		val (meterAddress, body) = checkAndGetTypedResult(resultList,
+				MeterDataType.METER_PARAM.tag, MeterParams::class.java)
+		return with(body) {
+			MsdMeterParams(
+					reverseAddress(meterAddress),
+					sampleTime.value.toInt(),
+					zeroDrift.asString.toDoubleOrNull() ?: Double.NaN,
+					unit1Value.text,
+					pw1stThreshold.asString.toDoubleOrNull() ?: Double.NaN,
+					tofUpperBound.asString.toDoubleOrNull() ?: Double.NaN,
+					tofLowerBound.asString.toDoubleOrNull() ?: Double.NaN,
+					tofMax.asString.toDoubleOrNull() ?: Double.NaN,
+					initialFlow.asString.toDoubleOrNull() ?: Double.NaN,
+					unit2Value.text,
+					pipeHorizontalLength.asString.toDoubleOrNull() ?: Double.NaN,
+					pipeVerticalLength.asString.toDoubleOrNull() ?: Double.NaN,
+					pipeRadius.asString.toDoubleOrNull() ?: Double.NaN
+			)
+		}
+	}
+
+	fun writeMeterParams(msdMeterParams: MsdMeterParams) {
+		val address = checkAndReverseAddress(msdMeterParams.address)
+		val meterParams = try {
+			with(msdMeterParams) {
+				MeterParams(
+						sampleTime = Bcd30().apply {
+							asString = sampleTime.toString()
+						},
+						zeroDrift = Bcd42().apply {
+							asString = zeroDrift.toString()
+						},
+						unit1 = Units.Streamable(
+								Units.fromString(unit1) ?: throw BadRequestException(
+										"$unit1 不是合法的单位。")
+						),
+						pw1stThreshold = Bcd11().apply {
+							asString = pw1stThreshold.toString()
+						},
+						tofUpperBound = Bcd42().apply {
+							asString = tofUpperBound.toString()
+						},
+						tofLowerBound = Bcd42().apply {
+							asString = tofLowerBound.toString()
+						},
+						tofMax = Bcd42().apply {
+							asString = tofMax.toString()
+						},
+						initialFlow = Bcd42().apply {
+							asString = initialFlow.toString()
+						},
+						unit2 = Units.Streamable(
+								Units.fromString(unit2) ?: throw BadRequestException(
+										"$unit2 不是合法的单位。")
+						),
+						pipeHorizontalLength = Bcd42().apply {
+							asString = pipeHorizontalLength.toString()
+						},
+						pipeVerticalLength = Bcd42().apply {
+							asString = pipeVerticalLength.toString()
+						},
+						pipeRadius = Bcd42().apply {
+							asString = pipeRadius.toString()
+						}
+				)
+			}
+		} catch (e: Exception) {
+			e.printStackTrace()
+			throw BadRequestException(e.message ?: "输入参数错误。")
+		}
+
+		val meterData = MeterData()
+		meterData.body = meterParams
+		meterData.head.dataId.asHex = MeterDataType.METER_PARAM.tag
+		meterData.head.seq = generateNextSeq()
+		val bs = ByteArrayOutputStream()
+		bs wr meterData
+		val meterPacket = MeterPacket(HexData7().apply {
+			asHex = address
+		}, 0x24, bs.toByteArray())
+		println(meterPacket)
+
+		val resultList = SerialPortMan.sendAndReceive(meterPacket)
+		checkAndGetResult(resultList, MeterDataType.METER_PARAM.tag)
+	}
+
 }

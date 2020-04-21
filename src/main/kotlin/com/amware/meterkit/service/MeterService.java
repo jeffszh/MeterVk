@@ -40,6 +40,7 @@ public class MeterService {
 	private static final String FACTORY_DATE = "/factory-date";
 	private static final String WORK_MODE = "/work-mode";
 	private static final String FLOW_CORRECTION = "/flow-correction";
+	private static final String METER_PARAMS = "/meter-params";
 
 	@SuppressWarnings("unused")
 	private static final Object SUCCESS = new Object() {
@@ -214,7 +215,7 @@ public class MeterService {
 	/**
 	 * <h1>设置流量修正</h1>
 	 * 注意：此功能为只写操作，不提供读。
-	 * 不过，在读调试界面数据{@link #getDebuggingUiData}中可看到修正值，
+	 * 不过，在读调试界面数据{@link MsdDebuggingUiData}中可看到修正值，
 	 * 建议上层的界面用{@link #getDebuggingUiData}立即获取刚写入的数据。
 	 *
 	 * @param flowCorrectionData 流量修正数据
@@ -224,6 +225,31 @@ public class MeterService {
 	@RequestEntry(value = SERVICE_ENTRY + FLOW_CORRECTION, method = RequestMethod.POST)
 	public Object setFlowCorrection(@RequestBody MsdFlowCorrectionData flowCorrectionData) {
 		serviceKt.setFlowCorrection(flowCorrectionData);
+		return SUCCESS;
+	}
+
+	/**
+	 * 读水表参数
+	 *
+	 * @param address 水表地址，若缺席表示广播。
+	 * @return 水表参数
+	 */
+	@GetMapping(METER_PARAMS)
+	@RequestEntry(value = SERVICE_ENTRY + METER_PARAMS, method = RequestMethod.GET)
+	public MsdMeterParams readMeterParams(@RequestParam(required = false) String address) {
+		return serviceKt.readMeterParams(address);
+	}
+
+	/**
+	 * 写水表参数
+	 *
+	 * @param meterParams 水表参数
+	 * @return 若成功，返回SUCCESS
+	 */
+	@PostMapping(METER_PARAMS)
+	@RequestEntry(value = SERVICE_ENTRY + METER_PARAMS, method = RequestMethod.POST)
+	public Object writeMeterParams(@RequestBody MsdMeterParams meterParams) {
+		serviceKt.writeMeterParams(meterParams);
 		return SUCCESS;
 	}
 

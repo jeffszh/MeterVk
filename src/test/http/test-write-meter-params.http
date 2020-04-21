@@ -1,0 +1,22 @@
+POST http://localhost:7406/meter-service/meter-params
+Content-Type: application/json;charset=UTF-8
+Accept: application/json
+Cache-Control: no-cache
+
+{
+	"sampleTime": 1000,
+	"zeroDrift": 0.1,
+	"unit1": "m3/h",
+	"pw1stThreshold": 0.3,
+	"tofUpperBound": 70.0,
+	"tofLowerBound": 40.0,
+	"tofMax": 2.0,
+	"initialFlow": 1,
+	"unit2": "L/h",
+	"pipeHorizontalLength": 62.0,
+	"pipeVerticalLength": 9.42,
+	"pipeRadius": 5.5
+}
+
+###
+

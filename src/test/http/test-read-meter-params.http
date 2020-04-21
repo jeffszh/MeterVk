@@ -1,0 +1,7 @@
+GET http://localhost:7406/meter-service/meter-params
+Content-Type: application/json;charset=UTF-8
+Accept: application/json
+Cache-Control: no-cache
+
+###
+
