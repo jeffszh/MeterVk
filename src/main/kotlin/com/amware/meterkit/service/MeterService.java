@@ -39,6 +39,7 @@ public class MeterService {
 	private static final String METER_NUM_ADDRESS = "/meter-num-address";
 	private static final String FACTORY_DATE = "/factory-date";
 	private static final String WORK_MODE = "/work-mode";
+	private static final String FLOW_CORRECTION = "/flow-correction";
 
 	@SuppressWarnings("unused")
 	private static final Object SUCCESS = new Object() {
@@ -208,6 +209,22 @@ public class MeterService {
 	@RequestEntry(value = SERVICE_ENTRY + WORK_MODE, method = RequestMethod.POST)
 	public MsdWorkModeData changeWorkMode(@RequestBody MsdWorkModeData workModeData) {
 		return serviceKt.changeWorkMode(workModeData);
+	}
+
+	/**
+	 * <h1>设置流量修正</h1>
+	 * 注意：此功能为只写操作，不提供读。
+	 * 不过，在读调试界面数据{@link #getDebuggingUiData}中可看到修正值，
+	 * 建议上层的界面用{@link #getDebuggingUiData}立即获取刚写入的数据。
+	 *
+	 * @param flowCorrectionData 流量修正数据
+	 * @return 若成功，返回SUCCESS
+	 */
+	@PostMapping(FLOW_CORRECTION)
+	@RequestEntry(value = SERVICE_ENTRY + FLOW_CORRECTION, method = RequestMethod.POST)
+	public Object setFlowCorrection(@RequestBody MsdFlowCorrectionData flowCorrectionData) {
+		serviceKt.setFlowCorrection(flowCorrectionData);
+		return SUCCESS;
 	}
 
 }

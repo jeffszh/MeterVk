@@ -475,4 +475,45 @@ class MeterServiceKt {
 		}
 	}
 
+	fun setFlowCorrection(msdFlowCorrectionData: MsdFlowCorrectionData) {
+		val address = checkAndReverseAddress(msdFlowCorrectionData.address)
+		with(msdFlowCorrectionData) {
+			arrayOf(correctionPoint1, correctionPoint2, correctionPoint3, correctionPoint4).forEach {
+				if (it !in -99.9..99.9) {
+					throw BadRequestException("修正点取值范围必须在 -99.9 至 99.9 之间。")
+				}
+			}
+		}
+		val flowCorrectionData = with(msdFlowCorrectionData) {
+			FlowCorrectionData(
+					0,
+					Bcd21().apply {
+						asString = correctionPoint1.toString()
+					},
+					Bcd21().apply {
+						asString = correctionPoint2.toString()
+					},
+					Bcd21().apply {
+						asString = correctionPoint3.toString()
+					},
+					Bcd21().apply {
+						asString = correctionPoint4.toString()
+					}
+			)
+		}
+
+		val meterData = MeterData()
+		meterData.body = flowCorrectionData
+		meterData.head.dataId.asHex = MeterDataType.FLOW_CORRECTION_DATA.tag
+		meterData.head.seq = generateNextSeq()
+		val bs = ByteArrayOutputStream()
+		bs wr meterData
+		val meterPacket = MeterPacket(0x20, HexData7().apply {
+			asHex = address
+		}, 0x43, bs.toByteArray())
+
+		val resultList = SerialPortMan.sendAndReceive(meterPacket)
+		checkAndGetResult(resultList, MeterDataType.FLOW_CORRECTION_DATA.tag)
+	}
+
 }

@@ -1,0 +1,13 @@
+POST http://localhost:7406/meter-service/flow-correction
+Content-Type: application/json;charset=UTF-8
+Accept: application/json
+Cache-Control: no-cache
+
+{
+	"correctionPoint1": 12.34,
+	"correctionPoint2": -23.45,
+	"correctionPoint3": 34.56,
+	"correctionPoint4": -56.78
+}
+
+###
