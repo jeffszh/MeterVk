@@ -25,6 +25,10 @@ class MeterServiceKt {
 		private const val configFileName = "MeterServiceConfig.json"
 		private const val START_TESTING_DATA_TAG = "02A0"
 		fun BcdData.toDoubleOrNaN() = asString.toDoubleOrNull() ?: Double.NaN
+
+		fun <T : BcdData> Number.toBcd(bcd: T) = bcd.apply {
+			asString = this@toBcd.toString()
+		}
 	}
 
 	private class MeterServiceConfig {
@@ -205,17 +209,11 @@ class MeterServiceKt {
 		val currentCumulativeData = try {
 			with(msdCurrentCumulativeData) {
 				CurrentCumulativeData(
-						Bcd50().apply {
-							value = sumOfCooling
-						},
+						sumOfCooling.toBcd(Bcd50()),
 						Units.fromString(unit1) ?: throw BadRequestException("$unit1 不是合法的单位。"),
-						Bcd50().apply {
-							value = sumOfHeat
-						},
+						sumOfHeat.toBcd(Bcd50()),
 						Units.fromString(unit2) ?: throw BadRequestException("$unit2 不是合法的单位。"),
-						Bcd42().apply {
-							asString = sumOfFlow.toString()
-						},
+						sumOfFlow.toBcd(Bcd42()),
 						Units.fromString(unit3) ?: throw BadRequestException("$unit3 不是合法的单位。")
 				)
 			}
@@ -486,18 +484,10 @@ class MeterServiceKt {
 		val flowCorrectionData = with(msdFlowCorrectionData) {
 			FlowCorrectionData(
 					0,
-					Bcd21().apply {
-						asString = correctionPoint1.toString()
-					},
-					Bcd21().apply {
-						asString = correctionPoint2.toString()
-					},
-					Bcd21().apply {
-						asString = correctionPoint3.toString()
-					},
-					Bcd21().apply {
-						asString = correctionPoint4.toString()
-					}
+					correctionPoint1.toBcd(Bcd21()),
+					correctionPoint2.toBcd(Bcd21()),
+					correctionPoint3.toBcd(Bcd21()),
+					correctionPoint4.toBcd(Bcd21())
 			)
 		}
 
@@ -584,44 +574,24 @@ class MeterServiceKt {
 		val meterParams = try {
 			with(msdMeterParams) {
 				MeterParams(
-						sampleTime = Bcd30().apply {
-							asString = sampleTime.toString()
-						},
-						zeroDrift = Bcd42().apply {
-							asString = zeroDrift.toString()
-						},
+						sampleTime = sampleTime.toBcd(Bcd30()),
+						zeroDrift = zeroDrift.toBcd(Bcd42()),
 						unit1 = Units.Streamable(
 								Units.fromString(unit1) ?: throw BadRequestException(
 										"$unit1 不是合法的单位。")
 						),
-						pw1stThreshold = Bcd11().apply {
-							asString = pw1stThreshold.toString()
-						},
-						tofUpperBound = Bcd42().apply {
-							asString = tofUpperBound.toString()
-						},
-						tofLowerBound = Bcd42().apply {
-							asString = tofLowerBound.toString()
-						},
-						tofMax = Bcd42().apply {
-							asString = tofMax.toString()
-						},
-						initialFlow = Bcd42().apply {
-							asString = initialFlow.toString()
-						},
+						pw1stThreshold = pw1stThreshold.toBcd(Bcd11()),
+						tofUpperBound = tofUpperBound.toBcd(Bcd42()),
+						tofLowerBound = tofLowerBound.toBcd(Bcd42()),
+						tofMax = tofMax.toBcd(Bcd42()),
+						initialFlow = initialFlow.toBcd(Bcd42()),
 						unit2 = Units.Streamable(
 								Units.fromString(unit2) ?: throw BadRequestException(
 										"$unit2 不是合法的单位。")
 						),
-						pipeHorizontalLength = Bcd42().apply {
-							asString = pipeHorizontalLength.toString()
-						},
-						pipeVerticalLength = Bcd42().apply {
-							asString = pipeVerticalLength.toString()
-						},
-						pipeRadius = Bcd42().apply {
-							asString = pipeRadius.toString()
-						}
+						pipeHorizontalLength = pipeHorizontalLength.toBcd(Bcd42()),
+						pipeVerticalLength = pipeVerticalLength.toBcd(Bcd42()),
+						pipeRadius = pipeRadius.toBcd(Bcd42())
 				)
 			}
 		} catch (e: Exception) {
