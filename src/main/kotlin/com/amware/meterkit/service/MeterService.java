@@ -41,6 +41,7 @@ public class MeterService {
 	private static final String WORK_MODE = "/work-mode";
 	private static final String FLOW_CORRECTION = "/flow-correction";
 	private static final String METER_PARAMS = "/meter-params";
+	private static final String USM_TEST = "/usm-test";
 
 	@SuppressWarnings("unused")
 	private static final Object SUCCESS = new Object() {
@@ -226,6 +227,33 @@ public class MeterService {
 	public Object setFlowCorrection(@RequestBody MsdFlowCorrectionData flowCorrectionData) {
 		serviceKt.setFlowCorrection(flowCorrectionData);
 		return SUCCESS;
+	}
+
+	/**
+	 * <h1>开始USM测试</h1>
+	 * 注：在开始USM测试后，水表硬件会执行一段时间，这段时间水表也会有响应，
+	 * 若此时取测试结果则会显示正在测试中。
+	 *
+	 * @param address 水表地址，若缺席表示广播。
+	 * @return 若成功，返回SUCCESS
+	 */
+	@PostMapping(USM_TEST)
+	@RequestEntry(value = SERVICE_ENTRY + USM_TEST, method = RequestMethod.POST)
+	public Object startUsmTest(@RequestParam(required = false) String address) {
+		serviceKt.startUsmTest(address);
+		return SUCCESS;
+	}
+
+	/**
+	 * 读USM测试结果
+	 *
+	 * @param address 水表地址，若缺席表示广播。
+	 * @return USM测试结果
+	 */
+	@GetMapping(USM_TEST)
+	@RequestEntry(value = SERVICE_ENTRY + USM_TEST, method = RequestMethod.GET)
+	public MsdUsmTestResult readUsmTestResult(@RequestParam(required = false) String address) {
+		return serviceKt.readUsmTestResult(address);
 	}
 
 	/**

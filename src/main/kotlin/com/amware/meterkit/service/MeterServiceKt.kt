@@ -24,6 +24,7 @@ class MeterServiceKt {
 	companion object {
 		private const val configFileName = "MeterServiceConfig.json"
 		private const val START_TESTING_DATA_TAG = "02A0"
+		fun BcdData.toDoubleOrNaN() = asString.toDoubleOrNull() ?: Double.NaN
 	}
 
 	private class MeterServiceConfig {
@@ -134,9 +135,9 @@ class MeterServiceKt {
 		return with(body) {
 			MsdFlowData(
 					reverseAddress(meterAddress),
-					sumOfFlow.asString.toDoubleOrNull() ?: Double.NaN,
+					sumOfFlow.toDoubleOrNaN(),
 					unit1.value.text,
-					negSumOfFlow.asString.toDoubleOrNull() ?: Double.NaN,
+					negSumOfFlow.toDoubleOrNaN(),
 					unit2.value.text,
 					realTimeClock.toString(),
 					bitField.bytes[0],
@@ -157,15 +158,15 @@ class MeterServiceKt {
 		return with(body) {
 			MsdPreciseFlowData(
 					reverseAddress(meterAddress),
-					sumOfCooling.asString.toDoubleOrNull() ?: Double.NaN,
+					sumOfCooling.toDoubleOrNaN(),
 					unit1.text,
-					sumOfHeat.asString.toDoubleOrNull() ?: Double.NaN,
+					sumOfHeat.toDoubleOrNaN(),
 					unit2.text,
-					instantPower.asString.toDoubleOrNull() ?: Double.NaN,
+					instantPower.toDoubleOrNaN(),
 					unit3.text,
-					instantFlow.asString.toDoubleOrNull() ?: Double.NaN,
+					instantFlow.toDoubleOrNaN(),
 					unit4.text,
-					sumOfFlow.asString.toDoubleOrNull() ?: Double.NaN,
+					sumOfFlow.toDoubleOrNaN(),
 					unit5.text
 			)
 		}
@@ -185,18 +186,16 @@ class MeterServiceKt {
 					reverseAddress(meterAddress),
 					programVersion.value.toInt(),
 					supplyReturnFlag.bytes[0] > 0,
-					instrumentFactor.asString.toDoubleOrNull() ?: Double.NaN,
-					lowFlowExcision.asString.toDoubleOrNull() ?: Double.NaN,
-					flowCompensation1.asString.toDoubleOrNull() ?: Double.NaN,
-					flowCompensation2.asString.toDoubleOrNull() ?: Double.NaN,
-					flowCompensation3.asString.toDoubleOrNull() ?: Double.NaN,
-					flowCompensation4.asString.toDoubleOrNull() ?: Double.NaN,
-					supplyingTemperatureCompensation.asString
-							.toDoubleOrNull() ?: Double.NaN,
-					returningTemperatureCompensation.asString
-							.toDoubleOrNull() ?: Double.NaN,
+					instrumentFactor.toDoubleOrNaN(),
+					lowFlowExcision.toDoubleOrNaN(),
+					flowCompensation1.toDoubleOrNaN(),
+					flowCompensation2.toDoubleOrNaN(),
+					flowCompensation3.toDoubleOrNaN(),
+					flowCompensation4.toDoubleOrNaN(),
+					supplyingTemperatureCompensation.toDoubleOrNaN(),
+					returningTemperatureCompensation.toDoubleOrNaN(),
 					introductionDate.asString,
-					caliber.asString.toDoubleOrNull() ?: Double.NaN
+					caliber.toDoubleOrNaN()
 			)
 		}
 	}
@@ -516,6 +515,43 @@ class MeterServiceKt {
 		checkAndGetResult(resultList, MeterDataType.FLOW_CORRECTION_DATA.tag)
 	}
 
+	// 这个功能似乎是不行的？怎么回事？
+	fun startUsmTest(nullableAddress: String?) {
+		val address = checkAndReverseAddress(nullableAddress)
+		val meterPacket = MeterPacketBuilder.buildReadNormalDataPacket(
+				address, MeterDataType.USM_TEST_RESULT)
+		meterPacket.ctrlCode = 0x24
+
+		val resultList = SerialPortMan.sendAndReceive(meterPacket)
+		checkAndGetResult(resultList, MeterDataType.USM_TEST_RESULT.tag)
+	}
+
+	// 这个功能似乎是不行的？怎么回事？
+	fun readUsmTestResult(nullableAddress: String?): MsdUsmTestResult {
+		val address = checkAndReverseAddress(nullableAddress)
+		val meterPacket = MeterPacketBuilder.buildReadNormalDataPacket(
+				address, MeterDataType.USM_TEST_RESULT)
+		meterPacket.ctrlCode = 0x21
+
+		val resultList = SerialPortMan.sendAndReceive(meterPacket)
+		val (meterAddress, body) = checkAndGetTypedResult(resultList,
+				MeterDataType.USM_TEST_RESULT.tag, UsmTestResult::class.java)
+		return with(body) {
+			MsdUsmTestResult(
+					reverseAddress(meterAddress),
+					testStatus,
+					errorCode1,
+					errorCode2.bytes[0],
+					pw1stUp.toDoubleOrNaN(),
+					pw1stDown.toDoubleOrNaN(),
+					tofUp.toDoubleOrNaN(),
+					tofDown.toDoubleOrNaN(),
+					dTof.toDoubleOrNaN(),
+					dTofFilt.toDoubleOrNaN()
+			)
+		}
+	}
+
 	fun readMeterParams(nullableAddress: String?): MsdMeterParams {
 		val address = checkAndReverseAddress(nullableAddress)
 		val meterPacket = MeterPacketBuilder.buildReadNormalDataPacket(
@@ -528,17 +564,17 @@ class MeterServiceKt {
 			MsdMeterParams(
 					reverseAddress(meterAddress),
 					sampleTime.value.toInt(),
-					zeroDrift.asString.toDoubleOrNull() ?: Double.NaN,
+					zeroDrift.toDoubleOrNaN(),
 					unit1Value.text,
-					pw1stThreshold.asString.toDoubleOrNull() ?: Double.NaN,
-					tofUpperBound.asString.toDoubleOrNull() ?: Double.NaN,
-					tofLowerBound.asString.toDoubleOrNull() ?: Double.NaN,
-					tofMax.asString.toDoubleOrNull() ?: Double.NaN,
-					initialFlow.asString.toDoubleOrNull() ?: Double.NaN,
+					pw1stThreshold.toDoubleOrNaN(),
+					tofUpperBound.toDoubleOrNaN(),
+					tofLowerBound.toDoubleOrNaN(),
+					tofMax.toDoubleOrNaN(),
+					initialFlow.toDoubleOrNaN(),
 					unit2Value.text,
-					pipeHorizontalLength.asString.toDoubleOrNull() ?: Double.NaN,
-					pipeVerticalLength.asString.toDoubleOrNull() ?: Double.NaN,
-					pipeRadius.asString.toDoubleOrNull() ?: Double.NaN
+					pipeHorizontalLength.toDoubleOrNaN(),
+					pipeVerticalLength.toDoubleOrNaN(),
+					pipeRadius.toDoubleOrNaN()
 			)
 		}
 	}
