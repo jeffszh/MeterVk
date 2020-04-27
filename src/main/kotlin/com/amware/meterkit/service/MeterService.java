@@ -40,8 +40,9 @@ public class MeterService {
 	private static final String FACTORY_DATE = "/factory-date";
 	private static final String WORK_MODE = "/work-mode";
 	private static final String FLOW_CORRECTION = "/flow-correction";
-	private static final String METER_PARAMS = "/meter-params";
 	private static final String USM_TEST = "/usm-test";
+	private static final String VALVE_CTRL = "/valve-ctrl";
+	private static final String METER_PARAMS = "/meter-params";
 
 	@SuppressWarnings("unused")
 	private static final Object SUCCESS = new Object() {
@@ -254,6 +255,31 @@ public class MeterService {
 	@RequestEntry(value = SERVICE_ENTRY + USM_TEST, method = RequestMethod.GET)
 	public MsdUsmTestResult readUsmTestResult(@RequestParam(required = false) String address) {
 		return serviceKt.readUsmTestResult(address);
+	}
+
+	/**
+	 * 阀控命令
+	 *
+	 * @param valveCtrlData 阀控数据，其中{@link MsdValveCtrlData#valveCtrl}必填。
+	 * @return 若成功，返回SUCCESS
+	 */
+	@PostMapping(VALVE_CTRL)
+	@RequestEntry(value = SERVICE_ENTRY + VALVE_CTRL, method = RequestMethod.POST)
+	public Object valveCtrl(@RequestBody MsdValveCtrlData valveCtrlData) {
+		serviceKt.valveCtrl(valveCtrlData);
+		return SUCCESS;
+	}
+
+	/**
+	 * 读阀控状态
+	 *
+	 * @param address 水表地址，若缺席表示广播。
+	 * @return 阀控数据
+	 */
+	@GetMapping(VALVE_CTRL)
+	@RequestEntry(value = SERVICE_ENTRY + VALVE_CTRL, method = RequestMethod.GET)
+	public MsdValveCtrlData readValveCtrlStatus(@RequestParam(required = false) String address) {
+		return serviceKt.readValveCtrlStatus(address);
 	}
 
 	/**

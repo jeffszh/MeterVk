@@ -542,6 +542,48 @@ class MeterServiceKt {
 		}
 	}
 
+	fun valveCtrl(msdValveCtrlData: MsdValveCtrlData) {
+		val address = checkAndReverseAddress(msdValveCtrlData.address)
+		when (msdValveCtrlData.valveCtrl) {
+			null -> throw BadRequestException("valveCtrl 不能为空。")
+			!in 0x00..0x01 -> throw BadRequestException("valveCtrl 必须是 0x00 或 0x01")
+		}
+
+		val meterData = MeterData()
+		meterData.head.dataId.asHex = MeterDataType.VALVE_CTRL.tag
+		meterData.head.seq = generateNextSeq()
+		meterData.body = ValveCtrlData().apply {
+			command0Status1 = false
+			off0On1 = msdValveCtrlData.valveCtrl
+		}
+		val bs = ByteArrayOutputStream()
+		bs wr meterData
+		val meterPacket = MeterPacket(HexData7().apply {
+			asHex = address
+		}, 0x24, bs.toByteArray())
+
+		val resultList = SerialPortMan.sendAndReceive(meterPacket)
+		checkAndGetResult(resultList, MeterDataType.VALVE_CTRL.tag)
+	}
+
+	fun readValveCtrlStatus(nullableAddress: String?): MsdValveCtrlData {
+		val address = checkAndReverseAddress(nullableAddress)
+		val meterPacket = MeterPacketBuilder.buildReadNormalDataPacket(
+				address, MeterDataType.VALVE_CTRL)
+		meterPacket.ctrlCode = 0x21
+
+		val resultList = SerialPortMan.sendAndReceive(meterPacket)
+		val (meterAddress, body) = checkAndGetTypedResult(resultList,
+				MeterDataType.VALVE_CTRL.tag, ValveCtrlData::class.java)
+		return with(body) {
+			MsdValveCtrlData().also {
+				it.address = reverseAddress(meterAddress)
+				it.valveStatus = valveStatus.code
+				it.errorCode = errorCode
+			}
+		}
+	}
+
 	fun readMeterParams(nullableAddress: String?): MsdMeterParams {
 		val address = checkAndReverseAddress(nullableAddress)
 		val meterPacket = MeterPacketBuilder.buildReadNormalDataPacket(
