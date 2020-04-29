@@ -42,6 +42,7 @@ public class MeterService {
 	private static final String FLOW_CORRECTION = "/flow-correction";
 	private static final String USM_TEST = "/usm-test";
 	private static final String VALVE_CTRL = "/valve-ctrl";
+	private static final String LORA_PARAMS = "/lora-params";
 	private static final String METER_PARAMS = "/meter-params";
 
 	@SuppressWarnings("unused")
@@ -280,6 +281,31 @@ public class MeterService {
 	@RequestEntry(value = SERVICE_ENTRY + VALVE_CTRL, method = RequestMethod.GET)
 	public MsdValveCtrlData readValveCtrlStatus(@RequestParam(required = false) String address) {
 		return serviceKt.readValveCtrlStatus(address);
+	}
+
+	/**
+	 * 读Lora参数
+	 *
+	 * @param address 水表地址，若缺席表示广播。
+	 * @return Lora参数
+	 */
+	@GetMapping(LORA_PARAMS)
+	@RequestEntry(value = SERVICE_ENTRY + LORA_PARAMS, method = RequestMethod.GET)
+	public MsdLoraParams readLoraParams(@RequestParam(required = false) String address) {
+		return serviceKt.readLoraParams(address);
+	}
+
+	/**
+	 * 写Lora参数
+	 *
+	 * @param loraParams Lora参数
+	 * @return 若成功，返回SUCCESS
+	 */
+	@PostMapping(LORA_PARAMS)
+	@RequestEntry(value = SERVICE_ENTRY + LORA_PARAMS, method = RequestMethod.POST)
+	public Object writeLoraParams(@RequestBody MsdLoraParams loraParams) {
+		serviceKt.writeLoraParams(loraParams);
+		return SUCCESS;
 	}
 
 	/**

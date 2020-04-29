@@ -25,3 +25,6 @@ class CustomException(msg: String) : Exception(msg)
 
 @ResponseStatus(HttpStatus.BAD_REQUEST)
 class BadRequestException(msg: String) : IOException(msg)
+
+@ResponseStatus(HttpStatus.UNPROCESSABLE_ENTITY)
+class UnprocessableEntityException(msg: String) : IOException(msg)

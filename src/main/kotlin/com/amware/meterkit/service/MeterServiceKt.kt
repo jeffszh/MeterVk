@@ -8,6 +8,8 @@ import com.alibaba.fastjson.JSON
 import com.alibaba.fastjson.serializer.SerializerFeature
 import com.amware.meterkit.entity.*
 import com.amware.meterkit.mbus.SerialPortMan
+import com.amware.meterkit.net.LoraPlatformClient
+import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import java.io.ByteArrayOutputStream
 import java.io.FileInputStream
@@ -582,6 +584,83 @@ class MeterServiceKt {
 				it.errorCode = errorCode
 			}
 		}
+	}
+
+	fun readLoraParams(nullableAddress: String?): MsdLoraParams {
+		val address = checkAndReverseAddress(nullableAddress)
+		val meterPacket = MeterPacketBuilder.buildReadNormalDataPacket(
+				address, MeterDataType.LORA_PARAM)
+
+		val resultList = SerialPortMan.sendAndReceive(meterPacket)
+		val (meterAddress, body) = checkAndGetTypedResult(resultList,
+				MeterDataType.LORA_PARAM.tag, LoraParams::class.java)
+		return with(body) {
+			MsdLoraParams().also {
+				it.address = reverseAddress(meterAddress)
+				it.devEui = devEui.asHex
+				it.appEui = appEui.asHex
+				it.appKey = appKey.asHex
+			}
+		}
+	}
+
+	fun writeLoraParams(msdLoraParams: MsdLoraParams) {
+		val address = checkAndReverseAddress(msdLoraParams.address)
+		with(msdLoraParams) {
+			when (companyCode) {
+				null, "zh", "amwares", "test" -> {
+				}
+				else -> throw BadRequestException("companyCode 必须是 \"zh\", \"amwares\"或\"test\"")
+			}
+			if (devEui == null) {
+				throw BadRequestException("devEui 不能为空！")
+			}
+			try {
+				if (DataUtils.hexStrToBytes(devEui).size != 8) {
+					throw BadRequestException("devEui 必须是8字节的十六进制字符串。")
+				}
+			} catch (e: Exception) {
+				throw BadRequestException("devEui 必须是8字节的十六进制字符串。")
+			}
+		}
+
+		val createDeviceResultString = LoraPlatformClient.createDevice(msdLoraParams.companyCode,
+				DataUtils.noSpaceHexStr(msdLoraParams.devEui.trim()))
+		val createDeviceResult = JSON.parseObject(createDeviceResultString)
+		println(createDeviceResult)
+		//{"code":200,
+		// "application_eui":"0000000000000000",
+		// "company_code":"amwares",
+		// "dev_eui":"1111110000001234",
+		// "application_key":"e9903e547f879b56b36e1fe749da258b"}
+		when (createDeviceResult.getInteger("code")) {
+			200 -> {
+				// do nothing
+			}
+			HttpStatus.UNPROCESSABLE_ENTITY.value() -> {
+				throw UnprocessableEntityException("Lora平台访问出错：$createDeviceResult")
+			}
+			else -> {
+				throw IOException("Lora平台访问出错：$createDeviceResult")
+			}
+		}
+		val loraParams = LoraParams()
+		loraParams.devEui.asHex = createDeviceResult.getString("dev_eui")
+		loraParams.appEui.asHex = createDeviceResult.getString("application_eui")
+		loraParams.appKey.asHex = createDeviceResult.getString("application_key")
+
+		val meterData = MeterData(body = loraParams)
+		meterData.head.dataId.asHex = MeterDataType.LORA_PARAM.tag
+		meterData.head.seq = generateNextSeq()
+		val bs = ByteArrayOutputStream()
+		bs wr meterData
+		val meterPacket = MeterPacket(HexData7().apply {
+			asHex = address
+		}, 0x24.toByte(), bs.toByteArray())
+		println(meterPacket)
+
+		val resultList = SerialPortMan.sendAndReceive(meterPacket)
+		checkAndGetResult(resultList, MeterDataType.LORA_PARAM.tag)
 	}
 
 	fun readMeterParams(nullableAddress: String?): MsdMeterParams {
