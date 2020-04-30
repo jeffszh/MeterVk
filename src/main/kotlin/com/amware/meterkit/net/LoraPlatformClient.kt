@@ -52,7 +52,33 @@ object LoraPlatformClient {
 			entity.setContentEncoding("UTF-8")
 			entity.setContentType("application/json")
 			post.entity = entity
-			httpClient.execute(post).use { response -> return EntityUtils.toString(response.entity) }
+			httpClient.execute(post).use { response ->
+				return EntityUtils.toString(response.entity)
+			}
+		}
+	}
+
+	fun getDeviceInfo(devEui: String, timeStamp: String = NetUtils.timeStamp): String {
+		val allParams = LinkedHashMap<String, String>()
+		val params = TreeMap<String, String>(Comparator.reverseOrder())
+		params["dev_eui"] = DataUtils.noSpaceHexStr(devEui)
+		params.forEach { allParams[it.key] = it.value }
+		allParams["timestamp"] = timeStamp
+		allParams["secret"] = SECRET
+		allParams["access_token"] = generateAccessToken(allParams)
+		allParams.remove("secret")
+		val paramsStr = JSON.toJSONString(allParams)
+		println(paramsStr)
+
+		HttpClients.createDefault().use { httpClient ->
+			val post = HttpPost("$PLATFORM_URL/get_device")
+			val entity = StringEntity(paramsStr)
+			entity.setContentEncoding("UTF-8")
+			entity.setContentType("application/json")
+			post.entity = entity
+			return httpClient.execute(post).use { response ->
+				EntityUtils.toString(response.entity)
+			}
 		}
 	}
 

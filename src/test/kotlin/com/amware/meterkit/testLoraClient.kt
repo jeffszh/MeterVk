@@ -13,4 +13,8 @@ fun main() {
 //		println(result.application_key)
 //	}
 	println("-------------------------------")
+
+	val info = LoraPlatformClient.getDeviceInfo("1111110000001234")
+	println(info)
+	println(JSON.parseObject(info))
 }

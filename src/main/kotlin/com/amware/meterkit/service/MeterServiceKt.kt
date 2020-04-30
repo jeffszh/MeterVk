@@ -594,9 +594,23 @@ class MeterServiceKt {
 		val resultList = SerialPortMan.sendAndReceive(meterPacket)
 		val (meterAddress, body) = checkAndGetTypedResult(resultList,
 				MeterDataType.LORA_PARAM.tag, LoraParams::class.java)
+
+		val companyCode = try {
+			val getDeviceResultString = LoraPlatformClient.getDeviceInfo(
+					DataUtils.noSpaceHexStr(body.devEui.asHex))
+			println(getDeviceResultString)
+			val getDeviceResult = JSON.parseObject(getDeviceResultString)
+			println(getDeviceResult)
+			getDeviceResult.getString("company_code")
+		} catch (e: Exception) {
+			e.printStackTrace()
+			null
+		}
+
 		return with(body) {
 			MsdLoraParams().also {
 				it.address = reverseAddress(meterAddress)
+				it.companyCode = companyCode
 				it.devEui = devEui.asHex
 				it.appEui = appEui.asHex
 				it.appKey = appKey.asHex
